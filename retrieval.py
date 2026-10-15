@@ -413,6 +413,175 @@ Core Communication Guidelines:
 6. Structure & Formatting: Format your response cleanly with Markdown headings/bullet points, bold key facts, and end with a `[Sources & Grounding]` section listing either the Local Guidebook sections used or the live web sources."""
 
 
+IGNORE_SEARCH_DOMAINS = (
+    "youtube.com", "youtu.be", "instagram.com", "facebook.com",
+    "twitter.com", "x.com", "tiktok.com", "pinterest.com", "linkedin.com"
+)
+
+
+def tinyfish_live_search_and_fetch(query: str, max_urls: int = 3) -> dict:
+    """
+    Executes live web search via TinyFish Python SDK (tf_client.search.query)
+    and extracts clean markdown content from top Delhi travel result pages
+    (tf_client.fetch.get_contents).
+    """
+    if not embedding.tf_client:
+        return {
+            "query": query,
+            "urls": [],
+            "sources": [],
+            "markdown_context": "",
+            "success": False,
+            "error": "TinyFish client not initialized (missing API key)."
+        }
+
+    clean_q = query.strip()
+    if not any(term in clean_q.lower() for term in ("delhi", "new delhi", "dilli")):
+        search_query = f"{clean_q} New Delhi India travel guide timings tickets metro"
+    else:
+        search_query = clean_q
+
+    try:
+        search_res = embedding.tf_client.search.query(
+            search_query,
+            location="New Delhi, India"
+        )
+
+        filtered_urls = []
+        sources_meta = []
+        for r in getattr(search_res, "results", []):
+            url = getattr(r, "url", "")
+            title = getattr(r, "title", "Delhi Travel Guide")
+            if not url.startswith("http"):
+                continue
+            if any(d in url.lower() for d in IGNORE_SEARCH_DOMAINS):
+                continue
+            filtered_urls.append(url)
+            sources_meta.append({"title": title, "uri": url})
+            if len(filtered_urls) >= max_urls:
+                break
+
+        if not filtered_urls:
+            return {
+                "query": search_query,
+                "urls": [],
+                "sources": [],
+                "markdown_context": "",
+                "success": False,
+                "error": "No accessible web pages found."
+            }
+
+        fetch_res = embedding.tf_client.fetch.get_contents(
+            urls=filtered_urls,
+            format="markdown",
+            links=False,
+            image_links=False
+        )
+
+        markdown_blocks = []
+        for res in getattr(fetch_res, "results", []):
+            u = getattr(res, "url", "")
+            t = getattr(res, "title", "") or "Web Resource"
+            text = getattr(res, "text", "") or ""
+            if text:
+                # Cap text to ~3500 chars per page to keep context high-density
+                clean_text = text.strip()[:3500]
+                markdown_blocks.append(f"### Source: {t} ({u})\n{clean_text}")
+
+        combined_md = "\n\n---\n\n".join(markdown_blocks)
+        return {
+            "query": search_query,
+            "urls": filtered_urls,
+            "sources": sources_meta,
+            "markdown_context": combined_md,
+            "success": bool(combined_md)
+        }
+    except Exception as e:
+        return {
+            "query": search_query if "search_query" in locals() else clean_q,
+            "urls": [],
+            "sources": [],
+            "markdown_context": "",
+            "success": False,
+            "error": str(e)
+        }
+
+
+def tinyfish_agent_live_check(query_or_place: str, target_url: str = "https://www.google.com") -> dict:
+    """
+    Deploys an autonomous TinyFish browser agent (tf_client.agent.run) to navigate
+    live web pages, verify current timings, ticket fees, and live status.
+    """
+    if not embedding.tf_client:
+        return {
+            "status": "FAILED",
+            "steps": 0,
+            "result": "TinyFish API key not configured.",
+            "success": False
+        }
+
+    goal = (
+        f"Find up-to-date visitor information for '{query_or_place}' in New Delhi, India: "
+        f"1. Current opening hours and weekly closing day. "
+        f"2. Entry ticket fees for Indian nationals and foreign tourists. "
+        f"3. Nearest Delhi Metro station, line color, and gate number. "
+        f"4. Any live visitor notices or booking instructions."
+    )
+
+    try:
+        agent_res = embedding.tf_client.agent.run(
+            goal=goal,
+            url=target_url
+        )
+        raw_result = getattr(agent_res, "result", "")
+        if isinstance(raw_result, dict):
+            result_text = raw_result.get("result", str(raw_result))
+        else:
+            result_text = str(raw_result)
+
+        return {
+            "status": getattr(agent_res, "status", "COMPLETED"),
+            "steps": getattr(agent_res, "num_of_steps", 0),
+            "result": result_text,
+            "success": True
+        }
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "steps": 0,
+            "result": str(e),
+            "success": False
+        }
+
+
+def run_agent_workflow(goal_or_place: str):
+    """Executes and formats a complete TinyFish autonomous browser agent run."""
+    console.print()
+    console.print(
+        Panel.fit(
+            f"[bold cyan]🤖 Deploying TinyFish Autonomous Browser Agent[/bold cyan]\n"
+            f"Target Task: [bold yellow]'{goal_or_place}'[/bold yellow]\n"
+            f"[dim]The autonomous browser agent is navigating live web portals to extract real-time visitor intelligence...[/dim]",
+            border_style="cyan"
+        )
+    )
+    with console.status("[bold cyan]Agent navigating and extracting live web data...", spinner="dots"):
+        res = tinyfish_agent_live_check(goal_or_place)
+
+    if res.get("success"):
+        console.print(
+            Panel(
+                Markdown(res.get("result", "")),
+                title=f"[bold green]✓ TinyFish Browser Agent Report ({res.get('steps', 0)} steps)[/bold green]",
+                subtitle=f"[dim]Status: {res.get('status', 'COMPLETED')}[/dim]",
+                border_style="green",
+                padding=(1, 2)
+            )
+        )
+    else:
+        console.print(f"[bold red]TinyFish Browser Agent failed:[/bold red] {res.get('result')}\n")
+
+
 def execute_gemini_generation(
     contents: str,
     enable_search: bool = False
@@ -447,7 +616,8 @@ def execute_gemini_generation(
 
 def generate_dilliguide_answer(query: str, chunks: list[dict], status: str) -> dict:
     """
-    Generates a grounded response using local context and/or live Google Search Grounding.
+    Generates a grounded response using local context and/or live TinyFish web research,
+    with graceful fallback to Gemini Google Search Grounding if necessary.
     """
     if chunks:
         blocks = []
@@ -468,6 +638,48 @@ def generate_dilliguide_answer(query: str, chunks: list[dict], status: str) -> d
     else:
         local_context = "No verified local guidebook chunks available for this location."
 
+    tf_data = None
+    live_engine = "Local ChromaDB Vector RAG"
+    web_queries_used = []
+    web_sources = []
+
+    # If web grounding is needed, prioritize TinyFish live search & fetch
+    if status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB"):
+        tf_data = tinyfish_live_search_and_fetch(query, max_urls=3)
+        if tf_data.get("success") and tf_data.get("markdown_context"):
+            live_engine = "TinyFish Python SDK (Active Live Search & Markdown Fetch)"
+            web_sources = tf_data.get("sources", [])
+            web_queries_used = [tf_data.get("query", query)]
+
+            prompt = f"""Verified Local Guidebook Context:
+{local_context}
+
+Verified Live Web Research Context (via TinyFish Live Web Engine):
+{tf_data['markdown_context']}
+
+User Question: {query}
+Retrieval Mode: {status}
+
+Provide an accurate, secular, professional, and practical guide response. Base your facts on the verified local and live web research context:"""
+
+            response, model_used = execute_gemini_generation(prompt, enable_search=False)
+            answer_text = response.text or ""
+
+            return {
+                "answer": answer_text,
+                "web_queries": web_queries_used,
+                "web_sources": web_sources,
+                "model_used": model_used,
+                "status": status,
+                "chunks": chunks,
+                "tf_data": tf_data,
+                "live_engine": live_engine
+            }
+
+        # Fallback to native Gemini Google Search Grounding if TinyFish returned no markdown
+        live_engine = "Gemini Google Search Grounding (Fallback)"
+
+    # Standard / Fallback Generation
     prompt = f"""Verified Local Guidebook Context:
 {local_context}
 
@@ -477,12 +689,8 @@ Retrieval Mode: {status}
 Provide an accurate, secular, professional, and practical guide response:"""
 
     enable_search = status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB")
-
     response, model_used = execute_gemini_generation(prompt, enable_search=enable_search)
-
     answer_text = response.text or ""
-    web_queries_used = []
-    web_sources = []
 
     if response.candidates and response.candidates[0].grounding_metadata:
         gm = response.candidates[0].grounding_metadata
@@ -502,7 +710,9 @@ Provide an accurate, secular, professional, and practical guide response:"""
         "web_sources": web_sources,
         "model_used": model_used,
         "status": status,
-        "chunks": chunks
+        "chunks": chunks,
+        "tf_data": tf_data,
+        "live_engine": live_engine
     }
 
 
@@ -550,31 +760,51 @@ def auto_cache_to_chromadb(place_name: str, grounded_markdown: str) -> tuple[boo
 def auto_cache_new_place(query: str, answer_text: str) -> tuple[bool, str, int]:
     """
     Formats the grounded web information into a standardized 5-section Markdown
-    guidebook and persists it into ChromaDB.
+    guidebook and persists it into ChromaDB. Uses TinyFish to fetch any missing
+    context so all 5 sections are 100% complete without placeholders.
     """
-    structuring_prompt = f"""You are an expert travel editor for DilliGuide.
-Convert the following verified guide information about the Delhi location from the user query into our standardized DilliGuide guidebook format.
+    query_places = detect_mentioned_places(query)
+    if query_places:
+        place_name = query_places[0].replace("_", " ").title()
+    else:
+        target_loc = extract_target_location(query)
+        place_name = target_loc.replace("_", " ").title() if target_loc else "Delhi Landmark"
 
-User Query: {query}
-Information:
+    # Fetch comprehensive context via TinyFish to ensure 100% complete coverage
+    research_query = f"{place_name} New Delhi history architecture timings entry ticket fee nearest metro station iconic food cafes"
+    tf_data = tinyfish_live_search_and_fetch(research_query, max_urls=3)
+    comprehensive_context = tf_data.get("markdown_context", "")
+
+    structuring_prompt = f"""You are an expert travel editor for DilliGuide.
+Create our standardized, high-quality 5-section DilliGuide guidebook for: {place_name}.
+
+Initial Information:
 {answer_text}
 
-Format the output strictly as clean Markdown using this exact structure:
-# <Full Official Place Name>
+Additional Live Web Research Context (via TinyFish Live Web Engine):
+{comprehensive_context}
+
+CRITICAL QUALITY & FACTUALITY REQUIREMENTS:
+1. EVERY SINGLE SECTION (1 through 5) MUST BE THOROUGHLY AND COMPLETELY FILLED with verified, factual travel information.
+2. NEVER output placeholder text such as "*Information is not available in the provided context*", "N/A", or "Details not provided". Use the provided live web research context to detail the history, architecture, timings, tickets, metro route, eateries, and visitor tips.
+3. Keep a strictly secular and professional tone (no religious salutations like "Namaste").
+
+Output Structure:
+# {place_name}
 ## 1. History & Architecture
-<Historical context, founding era, architecture style, builder>
+<In-depth historical context, founding era, architecture style, builder, materials, historical significance>
 
 ## 2. Timings & Tickets
-<Visiting hours, weekly off day, entry fees for Indians and Foreigners, ticket booking info>
+<Visiting hours, weekly off day, entry fees for Indians and Foreigners, ticket booking info/portal, audio guide fees>
 
 ## 3. How to Reach & Metro
-<Nearest Delhi Metro station, line color, nearest gate number, transit guidance>
+<Nearest Delhi Metro station, line color, nearest gate number, walking/auto distance, transit guidance>
 
 ## 4. Nearby Iconic Food Spots
-<Famous nearby eateries, cafes, restaurants, street food specialties>
+<Famous nearby eateries, cafes, restaurants, street food specialties with recommended dishes and price range>
 
 ## 5. Quick Reference & Facts
-<Key highlights, recommended duration, photography rules, visitor tips>
+<Key highlights, recommended duration, photography rules, visitor tips, accessibility>
 
 Do not include backticks (```markdown ... ```) around the entire output. Return the raw Markdown starting with '# '."""
 
@@ -590,9 +820,9 @@ Do not include backticks (```markdown ... ```) around the entire output. Return 
 
         # Extract place title from first line
         first_line = structured_md.split("\n")[0]
-        place_name = re.sub(r"^#+\s*", "", first_line).strip() or "Delhi Landmark"
+        parsed_title = re.sub(r"^#+\s*", "", first_line).strip() or place_name
 
-        success, count, path_saved = auto_cache_to_chromadb(place_name, structured_md)
+        success, count, path_saved = auto_cache_to_chromadb(parsed_title, structured_md)
         return success, path_saved, count
     except Exception as e:
         console.print(f"[bold red][Error in Auto-Cache]:[/bold red] {e}")
@@ -606,8 +836,7 @@ def display_diagnostic_panel(
     query: str,
     status: str,
     diagnostics: dict,
-    web_queries: list[str],
-    model_used: str
+    result: dict
 ):
     """Renders the comprehensive Terminal Diagnostic Panel before displaying answer."""
     categories = diagnostics.get("categories_detected", [])
@@ -618,13 +847,18 @@ def display_diagnostic_panel(
         decision_label = "LOCAL_HIT  (⚡ Fast Local RAG - High Confidence)"
     elif status == "HYBRID_SUPPLEMENT":
         decision_style = "bold yellow"
-        decision_label = "HYBRID_SUPPLEMENT  (🔄 Local Guidebook + Live Web Grounding)"
+        decision_label = "HYBRID_SUPPLEMENT  (🔄 Local Guidebook + Live Web Research)"
     elif status == "EMPTY_DB":
         decision_style = "bold red"
-        decision_label = "EMPTY_DB  (⚠️ Local ChromaDB is Empty -> Live Web Grounding)"
+        decision_label = "EMPTY_DB  (⚠️ Local ChromaDB is Empty -> Live Web Research)"
     else:
         decision_style = "bold magenta"
-        decision_label = "WEB_FALLBACK  (🌐 Live Google Search Grounding Triggered!)"
+        decision_label = "WEB_FALLBACK  (🌐 Live TinyFish Web Search Triggered!)"
+
+    model_used = result.get("model_used", MODEL_ID)
+    live_engine = result.get("live_engine", "Local ChromaDB Vector RAG")
+    tf_data = result.get("tf_data")
+    web_queries = result.get("web_queries", [])
 
     console.print()
     console.print("=" * 80, style="cyan")
@@ -635,6 +869,7 @@ def display_diagnostic_panel(
     console.print(f"• [bold]Query Categories Detected:[/bold] {cats_display}")
     console.print(f"• [bold]Routing Decision:[/bold] [{decision_style}]{decision_label}[/{decision_style}]")
     console.print(f"• [bold]Routing Rationale:[/bold] [italic]{diagnostics.get('reason', '')}[/italic]")
+    console.print(f"• [bold]Live Grounding Engine:[/bold] [bold green]{live_engine}[/bold green]")
     console.print(f"• [bold]Active Model:[/bold] [green]{model_used}[/green]")
 
     candidates = diagnostics.get("candidates", [])
@@ -671,8 +906,14 @@ def display_diagnostic_panel(
     else:
         console.print("\n[dim]No local candidates retrieved from ChromaDB.[/dim]")
 
-    if web_queries:
-        console.print("\n[bold cyan]Google Search Grounding Queries Executed:[/bold cyan]")
+    if tf_data and tf_data.get("urls"):
+        console.print(f"\n[bold green]TinyFish Live Web Research Engine:[/bold green]")
+        console.print(f"  • Search Query: [italic]{tf_data.get('query', '')}[/italic]")
+        console.print(f"  • Pages Extracted ({len(tf_data.get('urls', []))}):")
+        for s in tf_data.get("sources", []):
+            console.print(f"    - [blue underline]{s['title']}[/blue underline]: [dim]{s['uri']}[/dim]")
+    elif web_queries:
+        console.print("\n[bold cyan]Google Search Grounding Queries Executed (Fallback):[/bold cyan]")
         for q in web_queries:
             console.print(f"  • [italic]{q}[/italic]")
 
@@ -692,8 +933,7 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
         query=query,
         status=status,
         diagnostics=diagnostics,
-        web_queries=result["web_queries"],
-        model_used=result["model_used"]
+        result=result
     )
 
     # Display Answer
@@ -725,7 +965,7 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
                 should_cache = False
 
         if should_cache:
-            with console.status("[bold cyan]Structuring and saving guide to ChromaDB cache...", spinner="dots"):
+            with console.status("[bold cyan]Structuring and saving 100% complete guide to ChromaDB cache...", spinner="dots"):
                 ok, saved_path, count = auto_cache_new_place(query, result["answer"])
             if ok:
                 console.print(f"[bold green]✓ Successfully cached![/bold green] Saved [yellow]{saved_path}[/yellow] ({count} chunks added to ChromaDB).")
@@ -740,9 +980,10 @@ def print_banner():
         Panel.fit(
             f"[bold cyan]Connected to ChromaDB:[/bold cyan] [green]{embedding.collection.name}[/green] ([yellow]{total_docs} chunks[/yellow])\n"
             f"[bold cyan]Active Generation Model:[/bold cyan] [green]{MODEL_ID}[/green] (Fallback: [dim]{FALLBACK_MODEL_ID}[/dim])\n"
-            f"[bold cyan]Google Search Grounding:[/bold cyan] [bold green]ENABLED[/bold green] (Corrective Real-Time RAG)\n"
-            f"[bold cyan]Self-Learning Cache:[/bold cyan]     [bold green]READY[/bold green] (Auto-creates .md & embeds)\n\n"
-            "[dim]Commands: Type your query, or type 'stats', 'clear', or 'exit' / 'quit'.[/dim]",
+            f"[bold cyan]Live Search & Extraction:[/bold cyan] [bold green]TinyFish Python SDK[/bold green] (Fallback: Google Grounding)\n"
+            f"[bold cyan]Autonomous Browser Agent:[/bold cyan] [bold green]TinyFish Agent Ready[/bold green] (Type '/agent <task>')\n"
+            f"[bold cyan]Self-Learning Cache:[/bold cyan]     [bold green]READY[/bold green] (Auto-creates 100% complete .md & embeds)\n\n"
+            "[dim]Commands: Type query, '/agent <task>', '--auto-cache', 'stats', 'clear', or 'exit'.[/dim]",
             title="[bold yellow]🏛️  DilliGuide - Terminal Retrieval & Generation Engine[/bold yellow]",
             border_style="cyan",
             padding=(1, 2)
@@ -769,7 +1010,19 @@ def show_stats():
 def main():
     print_banner()
 
-    # CLI argument mode
+    # CLI argument mode: Check for --agent / -ag
+    if "--agent" in sys.argv or "-ag" in sys.argv:
+        flag = "--agent" if "--agent" in sys.argv else "-ag"
+        flag_idx = sys.argv.index(flag)
+        agent_query_parts = [a for idx, a in enumerate(sys.argv) if idx > flag_idx and not a.startswith("--")]
+        if agent_query_parts:
+            agent_goal = " ".join(agent_query_parts).strip()
+            run_agent_workflow(agent_goal)
+            return
+        else:
+            console.print("[bold red]Please specify a goal or question for the browser agent, e.g.:[/bold red] python retrieval.py --agent \"Check Lotus Temple timings\"")
+            return
+
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     auto_cache_flag = "--auto-cache" in sys.argv or "-a" in sys.argv
 
@@ -786,11 +1039,10 @@ def main():
         run_query_pipeline(query, auto_cache_enabled=auto_cache_flag)
         return
 
-
     # Interactive Loop
     while True:
         try:
-            query = console.input("\n[bold magenta]Ask DilliGuide (or 'exit' / 'stats'): [/bold magenta]").strip()
+            query = console.input("\n[bold magenta]Ask DilliGuide (or 'exit' / 'stats' / '/agent <task>'): [/bold magenta]").strip()
         except (KeyboardInterrupt, EOFError):
             console.print("\n[bold yellow]Exiting DilliGuide. Safe travels and have a wonderful journey![/bold yellow]\n")
             break
@@ -804,6 +1056,14 @@ def main():
 
         if query.lower() == "stats":
             show_stats()
+            continue
+
+        if query.lower().startswith(("/agent", "agent ")):
+            goal = re.sub(r"^/?agent\s*", "", query, flags=re.IGNORECASE).strip()
+            if goal:
+                run_agent_workflow(goal)
+            else:
+                console.print("[yellow]Usage: /agent <goal or place to inspect live>[/yellow]")
             continue
 
         if query.lower() in ("clear", "reset"):

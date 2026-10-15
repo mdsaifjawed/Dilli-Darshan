@@ -59,30 +59,41 @@ def clean_header_text(text: str | None) -> str:
             else:
                 cleaned = cleaned[:80].strip()
 
-    return cleaned
+    return cleaned.rstrip(",;:- ")
 
 
 def detect_category(section_title: str) -> str:
     """
     Inspects combined section and subsection title (case-insensitive) to assign
-    semantic category tags for metadata filtering.
+    semantic category tags for metadata filtering based on strict priority order.
     """
     title_lower = (section_title or "").lower()
 
-    if any(k in title_lower for k in ["history", "heritage", "architect", "chronolog", "structure"]):
-        return "history_and_architecture"
+    # 1. Quick Facts (Highest priority so summaries/reference data are categorized properly)
+    if any(k in title_lower for k in ["quick reference", "summary", "entity retrieval", "quick facts"]):
+        return "quick_facts"
+
+    # 2. Timings and Tickets (Takes precedence over general terms like structure)
     if any(k in title_lower for k in ["timing", "ticket", "guideline", "show", "security", "closure", "fee", "operating"]):
         return "timings_and_tickets"
+
+    # 3. Transit and Metro
     if any(k in title_lower for k in ["reach", "transit", "metro", "rail", "bus", "airport", "station"]):
         return "transit_and_metro"
+
+    # 4. Food and Dining
     if any(k in title_lower for k in [
         "restaurant", "culinary", "dining", "food", "eater", "cafe",
         "cuisine", "snack", "street food", "delicac"
     ]):
         return "food_and_dining"
-    if any(k in title_lower for k in ["quick reference", "summary", "entity retrieval"]):
-        return "quick_facts"
+
+    # 5. History and Architecture ("structure" removed to avoid misclassifying fee structure)
+    if any(k in title_lower for k in ["history", "heritage", "architect", "chronolog", "mughal", "dynasty", "fortress"]):
+        return "history_and_architecture"
+
     return "general"
+
 
 
 def chunk_markdown_text(

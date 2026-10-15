@@ -3,6 +3,7 @@ import chromadb
 from dotenv import load_dotenv
 from google import genai as gr
 from google.genai import types
+from tinyfish import TinyFish
 
 load_dotenv()
 
@@ -12,6 +13,20 @@ if not api_key:
     raise ValueError("API_Key not found in environment variables. Please check your .env file.")
 
 client = gr.Client(api_key=api_key)
+
+# 2. Initialize TinyFish Client
+tinyfish_api_key = (
+    os.getenv("Tinyfish_API")
+    or os.getenv("TINYFISH_API_KEY")
+    or os.getenv("TinyFish_API_Key")
+    or os.getenv("tinyfish_api_key")
+    or os.getenv("TINYFISH_API")
+    or os.getenv("TINYFISH_KEY")
+)
+tf_client = TinyFish(api_key=tinyfish_api_key) if tinyfish_api_key else None
+tinyfish_client = tf_client  # Backward-compatible alias
+
+
 
 # 2. Initialize ChromaDB Persistent Client
 # The database will be stored on disk in the 'chroma_db' folder

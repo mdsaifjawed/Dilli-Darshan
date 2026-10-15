@@ -168,6 +168,121 @@ def ingest_file(file_path: str, batch_size: int = 20) -> bool:
     return True
 
 
+def ingest_autonomous_place(place_name: str) -> bool:
+    """
+    Autonomously discovers, fetches, structures, and ingests a comprehensive
+    guide for any Delhi landmark/neighborhood using the TinyFish SDK and Gemini.
+    Ensures all 5 sections are 100% complete without placeholders.
+    """
+    clean_name = place_name.strip().strip('"').strip("'")
+    if not clean_name:
+        console.print("[bold red][Error][/bold red] Place name cannot be empty.")
+        return False
+
+    console.print()
+    console.print(
+        Panel.fit(
+            f"[bold cyan]🌐 Autonomous Place Ingestion via TinyFish Engine[/bold cyan]\n"
+            f"Target Place: [bold yellow]'{clean_name}'[/bold yellow]\n"
+            f"[dim]Searching web, scraping live markdown, synthesizing 5-section guide, and embedding...[/dim]",
+            border_style="cyan"
+        )
+    )
+
+    import retrieval
+
+    # 1. TinyFish Live Web Search & Fetch
+    with console.status("[bold cyan]Searching and fetching live web markdown via TinyFish...", spinner="dots"):
+        search_query = f"{clean_name} New Delhi history architecture timings entry ticket fee nearest metro station iconic food cafes"
+        tf_data = retrieval.tinyfish_live_search_and_fetch(search_query, max_urls=3)
+
+    if not tf_data.get("success") or not tf_data.get("markdown_context"):
+        console.print(f"[bold red][Error][/bold red] TinyFish could not fetch web markdown for '{clean_name}': {tf_data.get('error', 'No content')}")
+        return False
+
+    console.print(f"[bold green]✓ Live web pages extracted ({len(tf_data['urls'])}):[/bold green]")
+    for s in tf_data["sources"]:
+        console.print(f"  • [blue underline]{s['title']}[/blue underline]: [dim]{s['uri']}[/dim]")
+
+    # 2. Structure into 5-Section Markdown Guide using Gemini
+    with console.status("[bold cyan]Synthesizing complete 5-section guidebook with Gemini...", spinner="dots"):
+        structuring_prompt = f"""You are an expert travel editor for DilliGuide.
+Create our standardized, high-quality 5-section DilliGuide guidebook for: {clean_name}.
+
+Live Web Research Context:
+{tf_data['markdown_context']}
+
+CRITICAL QUALITY & FACTUALITY REQUIREMENTS:
+1. EVERY SINGLE SECTION (1 through 5) MUST BE THOROUGHLY AND COMPLETELY FILLED with verified, factual travel information.
+2. NEVER output placeholder text such as "*Information is not available in the provided context*", "N/A", or "Details not provided". Use the provided live web research context to detail the history, architecture, timings, tickets, metro route, eateries, and visitor tips.
+3. Keep a strictly secular and professional tone (no religious salutations like "Namaste").
+
+Output Structure:
+# {clean_name}
+## 1. History & Architecture
+<In-depth historical context, founding era, architecture style, builder, materials, historical significance>
+
+## 2. Timings & Tickets
+<Visiting hours, weekly off day, entry fees for Indians and Foreigners, ticket booking info/portal, audio guide fees>
+
+## 3. How to Reach & Metro
+<Nearest Delhi Metro station, line color, nearest gate number, walking/auto distance, transit guidance>
+
+## 4. Nearby Iconic Food Spots
+<Famous nearby eateries, cafes, restaurants, street food specialties with recommended dishes and price range>
+
+## 5. Quick Reference & Facts
+<Key highlights, recommended duration, photography rules, visitor tips, accessibility>
+
+Do not include backticks (```markdown ... ```) around the entire output. Return the raw Markdown starting with '# '."""
+
+        try:
+            response, _ = retrieval.execute_gemini_generation(structuring_prompt, enable_search=False)
+            structured_md = (response.text or "").strip()
+            if structured_md.startswith("```markdown"):
+                structured_md = structured_md[len("```markdown"):].strip()
+            if structured_md.startswith("```"):
+                structured_md = structured_md[len("```"):].strip()
+            if structured_md.endswith("```"):
+                structured_md = structured_md[:-3].strip()
+        except Exception as e:
+            console.print(f"[bold red][Error][/bold red] Gemini synthesis failed: {e}")
+            return False
+
+    # 3. Save to data/<place_id>.md, chunk, and embed into ChromaDB
+    with console.status("[bold cyan]Saving to data/ and embedding chunks into ChromaDB...", spinner="dots"):
+        ok, count, file_path = retrieval.auto_cache_to_chromadb(clean_name, structured_md)
+
+    if not ok:
+        console.print(f"[bold red][Error][/bold red] Failed to chunk and persist guide for '{clean_name}'.")
+        return False
+
+    # 4. Display results & category breakdown
+    target_p = Path(file_path)
+    chunks = chunking.parse_and_chunk_pdf(str(target_p))
+    cat_counts = Counter(c.metadata.get("category", "general") for c in chunks)
+
+    table = Table(title=f"Category Breakdown: {target_p.name}", show_header=True, header_style="bold cyan")
+    table.add_column("Category", style="magenta")
+    table.add_column("Chunk Count", justify="right", style="green")
+    for cat, c_count in sorted(cat_counts.items()):
+        table.add_row(cat, str(c_count))
+
+    console.print("\n")
+    console.print(table)
+    console.print(
+        Panel.fit(
+            f"[bold green]Autonomous Ingestion Successful![/bold green]\n"
+            f"• Place Ingested: [bold]{clean_name}[/bold]\n"
+            f"• Guide Saved:    [yellow]{file_path}[/yellow]\n"
+            f"• Chunks Added:   [bold]{count}[/bold]\n"
+            f"• Total in DB:    [bold yellow]{embedding.collection.count()}[/bold yellow] records",
+            border_style="green"
+        )
+    )
+    return True
+
+
 def reset_and_reingest(target_pdf: str = "lalquila.pdf"):
     """
     One-time cleanup: Cleans orphan test collections, resets dilli_guide_collection,
@@ -194,7 +309,15 @@ def main():
     # Check CLI arguments
     if len(sys.argv) > 1:
         arg = sys.argv[1].strip()
-        if arg in ("--clear", "-c", "--reset"):
+        if arg in ("--tinyfish", "-t"):
+            place_parts = sys.argv[2:]
+            if place_parts:
+                place = " ".join(place_parts).strip()
+                ingest_autonomous_place(place)
+            else:
+                console.print("[bold red]Please specify a place name, e.g.:[/bold red] python ingesting.py --tinyfish \"Lotus Temple\"")
+            return
+        elif arg in ("--clear", "-c", "--reset"):
             confirm = input("Are you sure you want to clear the entire database? (y/N): ").strip().lower()
             if confirm in ("y", "yes"):
                 embedding.clear_database()
@@ -207,7 +330,7 @@ def main():
         target_path = arg
     else:
         try:
-            target_path = input("Enter file (.pdf/.md) or directory path (or type 'clear'/'reingest'): ").strip()
+            target_path = input("Enter file (.pdf/.md), directory path, or 'tinyfish <Place>' (or 'clear'/'reingest'): ").strip()
         except (KeyboardInterrupt, EOFError):
             console.print("\n[dim]Operation cancelled.[/dim]")
             return
@@ -215,6 +338,13 @@ def main():
     if not target_path:
         console.print("[dim]No input entered. Exiting.[/dim]")
         return
+
+    # Check if user typed 'tinyfish <Place>'
+    if target_path.lower().startswith(("tinyfish ", "tf ", "--tinyfish ")):
+        parts = target_path.split(" ", 1)
+        if len(parts) > 1 and parts[1].strip():
+            ingest_autonomous_place(parts[1].strip())
+            return
 
     # Check if user typed 'clear' or 'reset' or 'reingest'
     if target_path.lower() in ("clear", "reset", "--clear", "-c"):
