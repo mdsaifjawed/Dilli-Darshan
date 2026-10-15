@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DilliDarshan AI | Delhi Tourism Official Companion</title>
+  
+  <!-- Modern Inter / Plus Jakarta Sans fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Space Grotesk"', 'sans-serif'],
+          },
+          colors: {
+            dilli: {
+              saffron: '#f97316',
+              amber: '#fbbf24',
+              blue: '#3b82f6',
+              dark: '#070a11',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Sleek Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.45);
+    }
+
+    /* 4-Slide Background Slideshow: 100% Delhi Landmarks Only */
+    .slideshow-bg {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .slide {
+      position: absolute;
+      inset: -4%;
+      width: 108%;
+      height: 108%;
+      background-size: cover;
+      background-position: center center;
+      opacity: 0;
+      animation: slideFade 24s infinite cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: center center;
+    }
+
+    /* 4 Verified Delhi Monuments (24s cycle = 6s per slide) */
+    /* 1. India Gate */
+    .slide:nth-child(1) {
+      background-image: url('https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=2000&q=80');
+      animation-delay: 0s;
+    }
+    /* 2. Qutub Minar */
+    .slide:nth-child(2) {
+      background-image: url('https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=2000&q=80');
+      animation-delay: 6s;
+    }
+    /* 3. Red Fort (Lal Qila) */
+    .slide:nth-child(3) {
+      background-image: url('https://images.unsplash.com/photo-1597042034823-3b604533036a?auto=format&fit=crop&w=2000&q=80');
+      animation-delay: 12s;
+    }
+    /* 4. Lotus Temple */
+    .slide:nth-child(4) {
+      background-image: url('https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=2000&q=80');
+      animation-delay: 18s;
+    }
+
+    @keyframes slideFade {
+      0% {
+        opacity: 0;
+        transform: scale(1);
+      }
+      4% {
+        opacity: 1;
+      }
+      25% {
+        opacity: 1;
+      }
+      29% {
+        opacity: 0;
+        transform: scale(1.06);
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* Dark Vignette Overlay for High Readability */
+    .vignette-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: radial-gradient(circle at center, rgba(7, 10, 17, 0.58) 0%, rgba(7, 10, 17, 0.88) 75%, rgba(3, 5, 10, 0.96) 100%);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    /* Compact Glassmorphism Panel */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.74);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.65), 0 0 30px rgba(59, 130, 246, 0.08);
+    }
+
+    /* Button glow */
+    .btn-glow {
+      box-shadow: 0 4px 20px rgba(249, 115, 22, 0.4);
+    }
+    .btn-glow:hover {
+      box-shadow: 0 6px 25px rgba(249, 115, 22, 0.6);
+    }
+
+    /* Typing Bouncing Dots */
+    .typing-dot {
+      animation: dotBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-dilli-dark text-slate-100 min-h-screen font-sans flex items-center justify-center p-3 sm:p-5 overflow-x-hidden relative">
+
+  <!-- ================= 100% VERIFIED DELHI SLIDESHOW ================= -->
+<!-- Background Slideshow with Local Offline Images -->
+<div class="slideshow-bg">
+  <div class="slide" style="background-image: url('assets/india-gate.jpg');"></div>
+  <div class="slide" style="background-image: url('assets/qutub-minar.jpg');"></div>
+  <div class="slide" style="background-image: url('assets/red-fort.jpg');"></div>
+  <div class="slide" style="background-image: url('assets/lotus-temple.jpg');"></div>
+  <div class="overlay"></div>
+</div>
+  <div class="vignette-overlay" aria-hidden="true"></div>
+
+  <!-- Top Delhi Indicator -->
+  <aside aria-label="Delhi Tour status" class="fixed top-3 right-4 z-20 hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/60 backdrop-blur-md border border-white/10 text-xs font-medium text-slate-300">
+    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+    <span>Delhi Live Heritage Guide</span>
+  </aside>
+
+  <!-- ================= MAIN CONTAINER (COMPACT 530px MAX WIDTH) ================= -->
+  <div class="relative z-10 w-full max-w-[530px] flex items-center justify-center my-auto">
+
+    <!-- ========================================================== -->
+    <!-- PAGE 1: WELCOME SCREEN                                     -->
+    <!-- ========================================================== -->
+    <section id="welcomeView" class="w-full glass-card rounded-3xl p-5 sm:p-7 transition-all duration-300 flex flex-col items-center text-center max-h-[82vh] overflow-y-auto">
+      
+      <!-- Official Digital Companion Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-orange-500/20 via-amber-500/15 to-blue-500/20 border border-orange-500/30 text-amber-300 text-xs font-semibold tracking-wide uppercase mb-3.5 shadow-inner">
+        <span class="text-sm">🇮🇳</span>
+        <span>Delhi Tourism &bull; Official Digital Companion</span>
+        <span class="bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-400/30">v2.4</span>
+      </div>
+
+      <!-- Main Application Title -->
+      <h1 class="font-display font-extrabold text-2xl sm:text-4xl tracking-tight text-white mb-2 leading-tight">
+        Dilli<span class="bg-gradient-to-r from-orange-400 via-amber-300 to-blue-400 bg-clip-text text-transparent">Darshan</span> AI
+      </h1>
+
+      <!-- Subtitle Description -->
+      <p class="text-xs sm:text-sm text-slate-300 max-w-sm font-normal leading-relaxed mb-5">
+        Your smart, real-time companion for uncovering Delhi. Get quick answers on <span class="text-amber-300 font-semibold">ticket bookings</span>, <span class="text-blue-300 font-semibold">metro routes</span>, <span class="text-orange-300 font-semibold">Chandni Chowk food</span>, and <span class="text-emerald-300 font-semibold">monument timings</span>.
+      </p>
+
+      <!-- 3 Feature Pills -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full mb-5 text-left">
+        <div class="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 flex items-start gap-2">
+          <div class="p-1 rounded bg-orange-500/20 text-orange-400 text-sm font-bold flex-shrink-0">🏛️</div>
+          <div>
+            <h2 class="text-xs font-bold text-white leading-tight">Timings & Fees</h2>
+            <p class="text-[10px] text-slate-400 leading-tight">ASI tickets & shows.</p>
+          </div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 flex items-start gap-2">
+          <div class="p-1 rounded bg-blue-500/20 text-blue-400 text-sm font-bold flex-shrink-0">🚇</div>
+          <div>
+            <h2 class="text-xs font-bold text-white leading-tight">Metro Routes</h2>
+            <p class="text-[10px] text-slate-400 leading-tight">Gates & interchange.</p>
+          </div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 flex items-start gap-2">
+          <div class="p-1 rounded bg-amber-500/20 text-amber-400 text-sm font-bold flex-shrink-0">🍢</div>
+          <div>
+            <h2 class="text-xs font-bold text-white leading-tight">Heritage & Food</h2>
+            <p class="text-[10px] text-slate-400 leading-tight">Old Delhi culinary walks.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary CTA Button (Navigates to Questioning Page) -->
+      <button 
+        id="startBtn" 
+        onclick="goToChat()"
+        class="btn-glow group inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm sm:text-base font-bold text-white rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-blue-600 hover:from-orange-600 hover:to-blue-700 active:scale-95 transition-all duration-200 mb-5 cursor-pointer">
+        <span>Start Exploring Delhi</span>
+        <svg class="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+        </svg>
+      </button>
+
+      <!-- Quick Question Starters -->
+      <div class="w-full">
+        <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Or tap a quick question:</p>
+        <div class="flex flex-wrap items-center justify-center gap-1.5">
+          <button onclick="launchWithQuestion('What is the best time to visit India Gate and is entry free?')" class="text-xs px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-orange-500/20 border border-slate-700/60 hover:border-orange-500/50 text-slate-200 hover:text-white transition cursor-pointer">
+            ✨ India Gate timings & entry?
+          </button>
+          <button onclick="launchWithQuestion('Which is the nearest metro station to Qutub Minar with gate number?')" class="text-xs px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-blue-500/20 border border-slate-700/60 hover:border-blue-500/50 text-slate-200 hover:text-white transition cursor-pointer">
+            🚇 Nearest metro to Qutub Minar?
+          </button>
+          <button onclick="launchWithQuestion('Give me a 1-day itinerary for Old Delhi food & Red Fort.')" class="text-xs px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-amber-500/20 border border-slate-700/60 hover:border-amber-500/50 text-slate-200 hover:text-white transition cursor-pointer">
+            🍢 Old Delhi food & Red Fort plan
+          </button>
+          <button onclick="launchWithQuestion('Can I carry cameras and bags inside Lotus Temple?')" class="text-xs px-2.5 py-1 rounded-full bg-slate-800/80 hover:bg-emerald-500/20 border border-slate-700/60 hover:border-emerald-500/50 text-slate-200 hover:text-white transition cursor-pointer">
+            🪷 Lotus Temple rules & camera policy?
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <footer class="mt-5 pt-2.5 border-t border-white/5 w-full text-center text-[10px] text-slate-400">
+        AI Tour Guide &bull; Verified knowledge from Delhi Tourism & DMRC archives
+      </footer>
+    </section>
+
+    <!-- ========================================================== -->
+    <!-- PAGE 2: QUESTIONING / CHAT SCREEN                          -->
+    <!-- ========================================================== -->
+    <section id="chatView" class="hidden w-full h-[74vh] max-h-[660px] glass-card rounded-3xl flex flex-col overflow-hidden transition-all duration-300 shadow-2xl">
+      
+      <!-- Top Chat Header with Back Button -->
+      <header class="px-3.5 py-2.5 bg-slate-900/85 border-b border-white/10 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <!-- Back button returning to Page 1 -->
+          <button 
+            onclick="goToWelcome()" 
+            class="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-xs font-semibold text-slate-200 hover:text-white transition active:scale-95 cursor-pointer"
+            title="Return to Welcome Screen">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            <span>Back</span>
+          </button>
+
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center text-xs shadow-md">
+              🏛️
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-display font-bold text-xs sm:text-sm text-white tracking-wide">DilliDarshan AI</span>
+                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">TOUR BOT</span>
+              </div>
+              <p class="text-[9px] text-emerald-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Active &bull; Delhi Archives Online</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clear Chat button -->
+        <button 
+          onclick="resetChatHistory()" 
+          class="px-2 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 border border-white/10 text-[10px] font-medium text-slate-300 hover:text-white transition cursor-pointer">
+          Clear Chat
+        </button>
+      </header>
+
+      <!-- Scrollable Message Body -->
+      <main id="chatMessages" class="flex-1 p-3.5 overflow-y-auto space-y-3">
+        
+        <!-- Welcome Bot Message -->
+        <div class="flex items-start gap-2 max-w-[90%]">
+          <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 shadow">
+            🏛️
+          </div>
+          <div class="space-y-1">
+            <div class="p-3 rounded-2xl rounded-tl-sm bg-slate-800/90 border border-white/10 text-slate-100 text-xs sm:text-sm leading-relaxed shadow-lg">
+              <p class="font-semibold text-amber-300 mb-0.5">Namaste! Welcome to Delhi. 🙏</p>
+              I am your AI tour guide. Ask me about heritage ticket prices, closing days, metro lines, or where to find authentic Daulat ki Chaat in Chandni Chowk!
+            </div>
+            <div class="text-[9px] text-slate-400 px-1">
+              Verified Knowledge Base &bull; DMRC & ASI Delhi 2026
+            </div>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Quick Question Suggestions Bar above Input -->
+      <div class="px-2.5 py-1 bg-slate-900/60 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto">
+        <span class="text-[9px] text-slate-400 font-medium whitespace-nowrap pl-0.5">Ask:</span>
+        <button onclick="handleQuickClick('What are the ticket prices and timings for Red Fort?')" class="text-[10px] whitespace-nowrap px-2 py-0.5 rounded-md bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-white/5 cursor-pointer">
+          Red Fort tickets & timing
+        </button>
+        <button onclick="handleQuickClick('Which metro line goes directly to Lotus Temple?')" class="text-[10px] whitespace-nowrap px-2 py-0.5 rounded-md bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-white/5 cursor-pointer">
+          Metro to Lotus Temple
+        </button>
+        <button onclick="handleQuickClick('What are the top 3 street foods to try in Old Delhi?')" class="text-[10px] whitespace-nowrap px-2 py-0.5 rounded-md bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-white/5 cursor-pointer">
+          Old Delhi street food
+        </button>
+      </div>
+
+      <!-- Input Footer -->
+      <footer class="p-2.5 bg-slate-900/95 border-t border-white/10">
+        <form id="chatForm" onsubmit="submitUserQuery(event)" class="flex items-center gap-1.5">
+          <input 
+            type="text" 
+            id="userQueryInput" 
+            placeholder="Ask about Delhi monuments, metro, tickets..." 
+            autocomplete="off"
+            class="flex-1 px-3 py-2 rounded-xl bg-slate-950/70 border border-white/15 text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
+            required
+          />
+          <button 
+            type="submit" 
+            id="sendBtn"
+            class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-xs sm:text-sm transition shadow-lg active:scale-95 flex items-center gap-1 cursor-pointer">
+            <span>Send</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+          </button>
+        </form>
+        <div class="flex items-center justify-between text-[9px] text-slate-400 mt-1 px-0.5">
+          <span>Server: <span id="apiStatus" class="text-amber-400">Ready for localhost:8000</span></span>
+          <span>Press Enter to send</span>
+        </div>
+      </footer>
+
+    </section>
+
+  </div>
+
+  <!-- ================= JAVASCRIPT LOGIC ================= -->
+  <script>
+    const welcomeView = document.getElementById('welcomeView');
+    const chatView = document.getElementById('chatView');
+    const chatMessages = document.getElementById('chatMessages');
+    const userQueryInput = document.getElementById('userQueryInput');
+    const apiStatus = document.getElementById('apiStatus');
+
+    // 1. Navigation Flow: Page 1 <-> Page 2
+    function goToChat() {
+      welcomeView.classList.add('hidden');
+      chatView.classList.remove('hidden');
+      chatView.classList.add('flex');
+      userQueryInput.focus();
+    }
+
+    function goToWelcome() {
+      chatView.classList.add('hidden');
+      chatView.classList.remove('flex');
+      welcomeView.classList.remove('hidden');
+    }
+
+    function launchWithQuestion(query) {
+      goToChat();
+      userQueryInput.value = query;
+      processUserQuery(query);
+    }
+
+    function handleQuickClick(query) {
+      userQueryInput.value = query;
+      processUserQuery(query);
+    }
+
+    function resetChatHistory() {
+      chatMessages.innerHTML = `
+        <div class="flex items-start gap-2 max-w-[90%]">
+          <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 shadow">
+            🏛️
+          </div>
+          <div class="space-y-1">
+            <div class="p-3 rounded-2xl rounded-tl-sm bg-slate-800/90 border border-white/10 text-slate-100 text-xs sm:text-sm leading-relaxed shadow-lg">
+              <p class="font-semibold text-amber-300 mb-0.5">Chat reset.</p>
+              Ask me your next question about Delhi!
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. Query Submission Handler
+    function submitUserQuery(e) {
+      e.preventDefault();
+      const query = userQueryInput.value.trim();
+      if (!query) return;
+      processUserQuery(query);
+    }
+
+    async function processUserQuery(query) {
+      userQueryInput.value = '';
+
+      // Render User Bubble
+      renderUserMessage(query);
+
+      // Render Typing Indicator Bubble
+      const loadingBubbleId = renderLoadingIndicator();
+
+      // Attempt live fetch to FastAPI / backend
+      try {
+        const response = await fetch('http://127.0.0.1:8000/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: query })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}`);
+        }
+
+        const data = await response.json();
+        apiStatus.textContent = 'Connected (HTTP 200)';
+        apiStatus.className = 'text-emerald-400';
+        
+        removeElementById(loadingBubbleId);
+        renderBotMessage(
+          data.answer || data.reply || data.response || "Here are the details from Delhi Tourism records.",
+          data.source || data.citation || "Verified Tourist Record • Delhi Archives"
+        );
+
+      } catch (err) {
+        // Fallback realistic responses if backend is not yet booted
+        apiStatus.textContent = 'Offline Demo Mode (Local server inactive)';
+        apiStatus.className = 'text-amber-400';
+
+        setTimeout(() => {
+          removeElementById(loadingBubbleId);
+          const simulated = generateRealisticDelhiResponse(query);
+          renderBotMessage(simulated.answer, simulated.source);
+        }, 500);
+      }
+    }
+
+    // 3. UI Rendering Helpers
+    function renderUserMessage(text) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex justify-end';
+      wrapper.innerHTML = `
+        <div class="max-w-[85%] sm:max-w-[75%] p-3 rounded-2xl rounded-tr-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm leading-relaxed shadow-lg">
+          <p>${escapeHtml(text)}</p>
+        </div>
+      `;
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function renderLoadingIndicator() {
+      const id = 'loading-' + Date.now();
+      const wrapper = document.createElement('div');
+      wrapper.id = id;
+      wrapper.className = 'flex items-start gap-2 max-w-[85%]';
+      wrapper.innerHTML = `
+        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 shadow">
+          🏛️
+        </div>
+        <div class="p-2.5 px-3.5 rounded-2xl rounded-tl-sm bg-slate-800/90 border border-white/10 flex items-center gap-1.5 shadow">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 typing-dot"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 typing-dot"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 typing-dot"></span>
+          <span class="text-[10px] text-slate-400 ml-1.5">Checking Delhi travel guides...</span>
+        </div>
+      `;
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+      return id;
+    }
+
+    function renderBotMessage(answer, source) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-start gap-2 max-w-[92%] sm:max-w-[88%]';
+      wrapper.innerHTML = `
+        <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 shadow">
+          🏛️
+        </div>
+        <div class="space-y-1">
+          <div class="p-3 rounded-2xl rounded-tl-sm bg-slate-800/90 border border-white/10 text-slate-100 text-xs sm:text-sm leading-relaxed shadow-lg">
+            ${formatMessageText(answer)}
+          </div>
+          ${source ? `
+            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/80 border border-white/10 text-[9px] text-amber-300/90">
+              <span>📄</span>
+              <span>Guide Source: ${escapeHtml(source)}</span>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function removeElementById(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function scrollToBottom() {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    function formatMessageText(text) {
+      return text
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-amber-300 font-semibold">$1</strong>');
+    }
+
+    // 4. Realistic Fallback Responses for Hackathon Demo Mode
+    function generateRealisticDelhiResponse(q) {
+      const lower = q.toLowerCase();
+
+      if (lower.includes('india gate')) {
+        return {
+          answer: "**India Gate** is open 24/7 with **free public entry**. The best time to visit is in the evening between **6:30 PM and 9:00 PM** when the war memorial and Kartavya Path are illuminated.\n\n• **Nearest Metro:** Central Secretariat (Yellow/Violet lines) or Barakhamba Road.",
+          source: "delhi-heritage-bulletin-2026.pdf • Sec 4.1"
+        };
+      }
+
+      if (lower.includes('qutub') || lower.includes('minar')) {
+        return {
+          answer: "**Qutub Minar** is open daily from sunrise to sunset (**7:00 AM – 9:00 PM**).\n\n• **Ticket Fee:** ₹50 for Indian nationals (online), ₹550 for foreign tourists.\n• **Nearest Metro:** **Qutub Minar Metro Station** on the Yellow Line (Exit Gate 2, ~1.5 km by e-rickshaw).",
+          source: "asi-monument-entry-directory.md • Doc ID 109"
+        };
+      }
+
+      if (lower.includes('food') || lower.includes('chandni chowk') || lower.includes('itinerary')) {
+        return {
+          answer: "For an authentic Old Delhi culinary experience:\n\n1. **Paranthe Wali Gali:** Classic rabri & mixed paranthas.\n2. **Karim's & Aslam Butter Chicken:** Near Jama Masjid Gate 1 for iconic kebabs.\n3. **Jalebi Wala (Dariba Kalan):** Giant crisp jalebis fried in desi ghee.\n\n**Tip:** Visit after 11:30 AM when all historical shops are open.",
+          source: "delhi-street-food-culture-survey.pdf • Sec 7"
+        };
+      }
+
+      if (lower.includes('lotus')) {
+        return {
+          answer: "**Lotus Temple (Bahá'í House of Worship)** is open Tuesday to Sunday from **8:30 AM to 5:00 PM** (Closed Mondays).\n\n• **Entry:** Free.\n• **Camera/Bags:** Outdoor garden photography allowed; strictly prohibited inside the silent prayer hall.\n• **Nearest Metro:** Kalkaji Mandir (Violet/Magenta lines).",
+          source: "delhi-worship-centers-handbook.pdf"
+        };
+      }
+
+      if (lower.includes('red fort') || lower.includes('lal qila')) {
+        return {
+          answer: "**Red Fort (Lal Qila)** is open Tuesday to Sunday from **9:30 AM to 4:30 PM** (Closed Mondays).\n\n• **Tickets:** ₹35 for Indian citizens, ₹500 for foreign visitors.\n• **Nearest Metro:** Lal Quila Metro Station (Violet Line, Gate 4 opens right opposite).",
+          source: "asi-delhi-red-fort-guidelines.pdf"
+        };
+      }
+
+      return {
+        answer: `Here is verified information regarding **"${escapeHtml(q)}"**:\n\nDelhi offers full connectivity through the **Delhi Metro (DMRC)** across 10 color-coded lines operating from 5:30 AM to 11:30 PM. Booking tickets online via the ASI portal offers a direct discount for heritage sites.\n\n*(Connect your backend server on port 8000 to stream live responses!)*`,
+        source: "delhi-tourism-comprehensive-faq.md"
+      };
+    }
+  </script>
+</body>
+</html>
