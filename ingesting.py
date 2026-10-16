@@ -305,7 +305,7 @@ def main():
     console.print("=" * 60)
     console.print(f"Connected to ChromaDB Collection: [bold green]'{embedding.collection.name}'[/bold green]")
     console.print(f"Current documents in database:    [bold yellow]{embedding.collection.count()}[/bold yellow]")
-    backup_info = f" (Backup: [green]{embedding.client.backup_label}[/green])" if getattr(embedding.client, "backup_label", None) else ""
+    backup_info = f" (Backups: [green]{embedding.client.backup_label}[/green])" if getattr(embedding.client, "backup_label", None) else ""
     console.print(f"Gemini API Key:                   [bold green]{getattr(embedding.client, 'active_label', 'API_Key')}[/bold green]{backup_info}\n")
 
     # Check CLI arguments

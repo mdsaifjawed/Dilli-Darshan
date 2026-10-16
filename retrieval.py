@@ -26,8 +26,9 @@ from google.genai import types
 
 console = Console()
 
-MODEL_ID = "gemini-3.6-flash"
-FALLBACK_MODEL_ID = "gemini-2.5-flash"
+MODEL_ID = "gemini-3.8-flash"
+FALLBACK_MODEL_ID = "gemini-3.6-flash"
+COUNTERMEASURE_MODEL_ID = "gemini-2.5-flash"
 
 # Keyword dictionary for zero-latency category routing
 CATEGORY_KEYWORDS = {
@@ -77,6 +78,9 @@ KNOWN_DELHI_PLACES = {
     "lal_qila": ["lal qila", "lal quila", "red fort", "lalquila", "lahori gate", "meena bazaar", "diwan-i-am"],
     "sunder_nursery": ["sunder nursery", "sundar nursery", "heritage park"],
     "humayuns_tomb": ["humayun tomb", "humayun's tomb", "humayuns tomb"],
+    "humayun's_tomb": ["humayun's tomb", "humayun tomb", "humayuns tomb"],
+    "cannaught_place": ["cannaught place", "connaught place", "cp", "rajiv chowk", "inner circle", "outer circle"],
+    "connaught_place": ["connaught place", "cannaught place", "cp", "rajiv chowk", "inner circle", "outer circle"],
     "qutub_minar": ["qutub minar", "qutb minar", "mehrauli", "iron pillar"],
     "india_gate": ["india gate", "kartavya path", "amar jawan jyoti", "war memorial"],
     "lotus_temple": ["lotus temple", "bahai house of worship", "bahai temple"],
@@ -642,8 +646,9 @@ def execute_gemini_generation(
     enable_search: bool = False
 ) -> tuple[types.GenerateContentResponse, str]:
     """
-    Executes content generation using MODEL_ID (gemini-3.6-flash) with graceful
-    fallback to FALLBACK_MODEL_ID (gemini-2.5-flash) if needed.
+    Executes content generation using MODEL_ID (gemini-3.8-flash) as default,
+    with graceful fallback to FALLBACK_MODEL_ID (gemini-3.6-flash) if 3.8 fails,
+    and COUNTERMEASURE_MODEL_ID (gemini-2.5-flash) if both 3.8 and 3.6 fail.
     Supports either single-turn string or multi-turn list[types.Content].
     """
     tools = [types.Tool(google_search=types.GoogleSearch())] if enable_search else None
@@ -652,10 +657,10 @@ def execute_gemini_generation(
         tools=tools
     )
 
-    models_to_try = [MODEL_ID, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"]
+    models_to_try = [MODEL_ID, FALLBACK_MODEL_ID, COUNTERMEASURE_MODEL_ID, "gemini-flash-latest"]
     last_err = None
 
-    for m in models_to_try:
+    for idx, m in enumerate(models_to_try):
         try:
             response = embedding.client.models.generate_content(
                 model=m,
@@ -665,9 +670,21 @@ def execute_gemini_generation(
             return response, m
         except Exception as e:
             last_err = e
+            if idx < len(models_to_try) - 1:
+                next_model = models_to_try[idx + 1]
+                err_msg = str(e).strip()
+                if len(err_msg) > 100:
+                    err_msg = err_msg[:100] + "..."
+                try:
+                    console.print(
+                        f"[yellow]⚠️  [Model Fallback][/yellow] Generation failed on [cyan]{m}[/cyan]: [dim]{err_msg}[/dim]\n"
+                        f"   [bold green]↳ Automatically switching to '{next_model}'...[/bold green]"
+                    )
+                except Exception:
+                    pass
             continue
 
-    raise RuntimeError(f"All Gemini generation models failed. Last error: {last_err}")
+    raise RuntimeError(f"All Gemini generation models failed ({', '.join(models_to_try)}). Last error: {last_err}")
 
 
 def generate_dilli_darshan_answer(query: str, chunks: list[dict], status: str) -> dict:
@@ -1283,12 +1300,12 @@ def run_query_pipeline(
 
 def print_banner():
     total_docs = embedding.collection.count()
-    backup_info = f" (Backup: {embedding.client.backup_label})" if getattr(embedding.client, "backup_label", None) else ""
+    backup_info = f" (Backups: {embedding.client.backup_label})" if getattr(embedding.client, "backup_label", None) else ""
     console.print(
         Panel.fit(
             f"[bold cyan]Connected to ChromaDB:[/bold cyan]    [green]{embedding.collection.name}[/green] ([yellow]{total_docs} chunks[/yellow])\n"
             f"[bold cyan]Gemini Client Key:[/bold cyan]        [green]{getattr(embedding.client, 'active_label', 'API_Key')}[/green][dim]{backup_info}[/dim]\n"
-            f"[bold cyan]Active Generation Model:[/bold cyan]  [green]{MODEL_ID}[/green] (Fallback: [dim]{FALLBACK_MODEL_ID}[/dim])\n"
+            f"[bold cyan]Active Generation Model:[/bold cyan]  [green]{MODEL_ID}[/green] (Fallback: [dim]{FALLBACK_MODEL_ID} -> {COUNTERMEASURE_MODEL_ID}[/dim])\n"
             f"[bold cyan]Multi-Turn Chat Session:[/bold cyan]  [bold green]Stateful Context & Memory Active[/bold green]\n"
             f"[bold cyan]Live Search & Extraction:[/bold cyan] [bold green]TinyFish Python SDK[/bold green] (Fallback: Google Grounding)\n"
             f"[bold cyan]Autonomous Browser Agent:[/bold cyan] [bold green]TinyFish Agent Ready[/bold green] (Type '/agent <task>')\n"

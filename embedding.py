@@ -56,10 +56,8 @@ class ResilientGeminiClient:
 
     @property
     def backup_label(self) -> str | None:
-        if len(self._clients) > 1:
-            next_idx = (self._active_idx + 1) % len(self._clients)
-            return self._clients[next_idx][0]
-        return None
+        remaining = [label for idx, (label, _) in enumerate(self._clients) if idx != self._active_idx]
+        return ", ".join(remaining) if remaining else None
 
     def execute_with_fallback(self, func_name: str, *args, **kwargs):
         num_clients = len(self._clients)
@@ -129,12 +127,22 @@ backup_key = (
 )
 if backup_key:
     clean_backup = backup_key.strip().strip('"').strip("'")
-    if not primary_key or clean_backup != primary_key.strip().strip('"').strip("'"):
+    if clean_backup not in [k[1] for k in key_entries]:
         key_entries.append(("API_Key_B1", clean_backup))
+
+backup2_key = (
+    os.getenv("API_Key_B2")
+    or os.getenv("API_KEY_B2")
+    or os.getenv("api_key_b2")
+)
+if backup2_key:
+    clean_backup2 = backup2_key.strip().strip('"').strip("'")
+    if clean_backup2 not in [k[1] for k in key_entries]:
+        key_entries.append(("API_Key_B2", clean_backup2))
 
 if not key_entries:
     raise ValueError(
-        "Neither 'API_Key' nor 'API_Key_B1' found in environment variables. Please check your .env file."
+        "No valid Gemini API keys ('API_Key', 'API_Key_B1', 'API_Key_B2') found in environment variables. Please check your .env file."
     )
 
 client = ResilientGeminiClient(key_entries)

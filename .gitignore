@@ -36,9 +36,6 @@ venv.bak/
 .env
 .env.local
 
-# ChromaDB persistence directory
-chroma_db/
-
 # IDE configurations
 .vscode/
 .idea/
