@@ -34,25 +34,33 @@ CATEGORY_KEYWORDS = {
     "history_and_architecture": [
         "history", "heritage", "architect", "chronolog", "structure",
         "built", "emperor", "dynasty", "mughal", "historical", "monument",
-        "shah jahan", "complex", "origin", "story"
+        "shah jahan", "complex", "origin", "story", "significance", "special features",
+        "main attractions", "locomotives", "gallery", "exhibits", "gate", "palace",
+        "mahal", "masjid", "fort", "diwan", "baoli", "tomb"
     ],
     "timings_and_tickets": [
         "timing", "ticket", "guideline", "show", "security", "closure",
         "fee", "operating", "open", "close", "cost", "price", "entry", "hours",
-        "schedule", "entry fee", "pass", "booking"
+        "schedule", "entry fee", "pass", "booking", "opening days", "visiting timings",
+        "entry ticket", "other costs", "other expenses", "dress code", "etiquette",
+        "visitor rules", "budget", "admission", "fare"
     ],
     "transit_and_metro": [
         "reach", "transit", "metro", "rail", "bus", "airport", "station",
         "direction", "route", "how to get", "nearest", "gate", "line", "dmrc",
-        "distance", "cab", "auto"
+        "distance", "cab", "auto", "how to reach", "railway station", "by car",
+        "by delhi metro", "local transport", "transport"
     ],
     "food_and_dining": [
         "restaurant", "culinary", "dining", "food", "eater", "cafe",
         "cuisine", "snack", "street food", "delicac", "eat", "lunch", "dinner",
-        "breakfast", "chaat", "mithai", "biryani", "sweet", "famous food"
+        "breakfast", "chaat", "mithai", "biryani", "sweet", "famous food",
+        "food court", "haldiram", "coffee", "cafeteria", "eateries", "dish", "bakery"
     ],
     "quick_facts": [
-        "quick reference", "summary", "entity retrieval", "fact", "overview", "info", "highlights"
+        "quick reference", "summary", "entity retrieval", "fact", "overview", "info", "highlights",
+        "introduction", "final summary", "important tips", "worth visiting", "suggested visit plan",
+        "one-day visit", "tips", "itinerary", "facts"
     ],
 }
 
@@ -66,13 +74,16 @@ LIVE_KEYWORDS = [
 # Known Delhi tourist landmarks and monuments for place mismatch detection
 KNOWN_DELHI_PLACES = {
     "red_fort": ["red fort", "lal quila", "lal qila", "lalquila", "lahori gate", "meena bazaar", "diwan-i-am"],
+    "lal_qila": ["lal qila", "lal quila", "red fort", "lalquila", "lahori gate", "meena bazaar", "diwan-i-am"],
     "sunder_nursery": ["sunder nursery", "sundar nursery", "heritage park"],
     "humayuns_tomb": ["humayun tomb", "humayun's tomb", "humayuns tomb"],
     "qutub_minar": ["qutub minar", "qutb minar", "mehrauli", "iron pillar"],
     "india_gate": ["india gate", "kartavya path", "amar jawan jyoti", "war memorial"],
     "lotus_temple": ["lotus temple", "bahai house of worship", "bahai temple"],
-    "akshardham": ["akshardham", "swaminarayan akshardham"],
-    "jama_masjid": ["jama masjid", "old delhi mosque"],
+    "akshardham": ["akshardham", "swaminarayan akshardham", "akshardham temple", "akshardham guide"],
+    "akshardham_guide": ["akshardham", "swaminarayan akshardham", "akshardham temple", "akshardham guide"],
+    "jama_masjid": ["jama masjid", "old delhi mosque", "jama masjid guide"],
+    "jama_masjid_guide": ["jama masjid", "old delhi mosque", "jama masjid guide"],
     "lodhi_garden": ["lodhi garden", "lodi garden", "sikandar lodi"],
     "chandni_chowk": ["chandni chowk", "paranthe wali gali", "khari baoli"],
     "bangla_sahib": ["bangla sahib", "gurudwara bangla sahib"],
@@ -83,43 +94,75 @@ KNOWN_DELHI_PLACES = {
     "national_museum": ["national museum", "janpath museum"],
     "raj_ghat": ["raj ghat", "rajghat", "gandhi memorial"],
     "agrasen_ki_baoli": ["agrasen ki baoli", "ugrasen ki baoli", "baoli"],
-    "rashtrapati_bhavan": ["rashtrapati bhavan", "amrit udyan", "mughal gardens"]
+    "rashtrapati_bhavan": ["rashtrapati bhavan", "amrit udyan", "mughal gardens"],
+    "air_force_museum": ["air force museum", "indian air force museum", "palam museum"],
+    "craft_museum": ["craft museum", "crafts museum", "national crafts museum", "hastkala academy"],
+    "gandhi_samriti_museum": ["gandhi smriti", "gandhi samriti", "birla house", "old birla house"],
+    "indra_gandhi_museum": ["indira gandhi memorial", "indira gandhi museum", "indra gandhi museum"],
+    "pm_snagyaly": ["pradhanmantri sangrahalaya", "pm sangrahalaya", "pm museum", "teen murti"],
+    "rail_museum": ["rail museum", "national rail museum", "railway museum"]
 }
 
 STOP_WORDS = {
-    "what", "where", "how", "when", "why", "who", "is", "are", "was", "were",
-    "the", "a", "an", "in", "at", "near", "to", "for", "from", "around", "of",
-    "best", "good", "top", "famous", "popular", "great", "iconic",
+    "what", "where", "how", "when", "why", "who", "which", "is", "are", "was", "were",
+    "the", "a", "an", "in", "at", "near", "nearest", "closest", "next", "to", "for", "from",
+    "around", "of", "and", "or", "but", "so", "with", "without", "between", "among", "along",
+    "best", "good", "top", "famous", "popular", "great", "iconic", "also", "just",
     "cafe", "cafes", "restaurant", "restaurants", "food", "dining", "eat", "eateries",
     "metro", "station", "transit", "route", "reach", "get", "direction", "directions",
     "ticket", "tickets", "price", "prices", "cost", "fee", "fees", "entry", "fare",
     "timing", "timings", "hours", "time", "open", "closed", "closure", "schedule",
     "history", "heritage", "architecture", "story", "about", "tell", "me", "guide",
-    "visit", "visiting", "tour", "explore", "trip", "see",
-    "delhi", "new delhi", "dilli", "city", "place", "places", "spot", "spots"
+    "visit", "visiting", "tour", "explore", "trip", "see", "show", "know", "give", "find",
+    "delhi", "new delhi", "dilli", "city", "place", "places", "spot", "spots",
+    # Pronouns & follow-up reference tokens
+    "it", "its", "there", "this", "that", "here", "their", "them", "these", "those",
+    "his", "her", "my", "your", "our", "one", "can", "could", "would", "should", "does", "do",
+    "any", "some", "all", "much", "many", "allowed", "allow", "rule", "rules", "guideline"
 }
 
 
 def get_known_corpus_places() -> dict[str, list[str]]:
-    """Builds a dynamic lookup of known places from KNOWN_DELHI_PLACES, data/*.md, and workspace files."""
+    """Builds a dynamic lookup of known places from KNOWN_DELHI_PLACES, data/*.md, data/*.pdf, and workspace files."""
     corpus_places = dict(KNOWN_DELHI_PLACES)
+    search_files = []
     data_dir = Path("data")
     if data_dir.exists():
-        for p in data_dir.glob("*.md"):
-            stem = p.stem.lower()
-            name = stem.replace("_", " ")
-            if stem not in corpus_places:
-                corpus_places[stem] = [name, stem]
-            elif name not in corpus_places[stem]:
-                corpus_places[stem].append(name)
+        search_files.extend(data_dir.glob("*.md"))
+        search_files.extend(data_dir.glob("*.pdf"))
+    search_files.extend(Path(".").glob("*.pdf"))
 
-    for p in Path(".").glob("*.pdf"):
+    for p in search_files:
         stem = p.stem.lower()
+        clean_stem = stem.replace(" ", "_")
         name = stem.replace("_", " ")
-        if stem not in corpus_places:
-            corpus_places[stem] = [name, stem]
-        elif name not in corpus_places[stem]:
-            corpus_places[stem].append(name)
+
+        # When registering stems from filenames like "akshardham_guide" or "jama_masjid_guide",
+        # also strip trailing "_guide" so both "akshardham" and "akshardham_guide" map cleanly to the same place aliases!
+        stripped_stem = re.sub(r"_guide$", "", clean_stem)
+        stripped_name = stripped_stem.replace("_", " ")
+
+        stems_to_register = {clean_stem, stripped_stem}
+        aliases_to_add = [name, stripped_name, clean_stem, stripped_stem]
+
+        for s in stems_to_register:
+            if s not in corpus_places:
+                corpus_places[s] = []
+            for a in aliases_to_add:
+                if a and a not in corpus_places[s]:
+                    corpus_places[s].append(a)
+
+    # Cross-link any _guide aliases with their base stem
+    for place_k in list(corpus_places.keys()):
+        if place_k.endswith("_guide"):
+            base_k = place_k[:-6]
+            if base_k in corpus_places:
+                for a in corpus_places[base_k]:
+                    if a not in corpus_places[place_k]:
+                        corpus_places[place_k].append(a)
+                for a in corpus_places[place_k]:
+                    if a not in corpus_places[base_k]:
+                        corpus_places[base_k].append(a)
 
     return corpus_places
 
@@ -143,14 +186,14 @@ def extract_target_location(query: str) -> str | None:
         cleaned_words = [w for w in words if w not in STOP_WORDS]
         if cleaned_words:
             candidate = " ".join(cleaned_words)
-            if candidate not in ("delhi", "new delhi", "dilli"):
+            if candidate not in ("delhi", "new delhi", "dilli") and len(candidate) >= 4:
                 return candidate
 
     words = q.split()
     cleaned_words = [w for w in words if w not in STOP_WORDS]
     if cleaned_words:
         candidate = " ".join(cleaned_words)
-        if candidate not in ("delhi", "new delhi", "dilli"):
+        if candidate not in ("delhi", "new delhi", "dilli") and len(candidate) >= 4:
             return candidate
 
     return None
@@ -271,9 +314,18 @@ def detect_query_categories(query: str) -> list[str]:
 # ==============================================================================
 # STAGE 2: Two-Tier ChromaDB Retrieval + Relevance Evaluator
 # ==============================================================================
-def retrieve_from_chromadb(query: str, top_k: int = 5) -> tuple[list[dict], str, dict]:
+def retrieve_from_chromadb(
+    query: str,
+    top_k: int = 5,
+    target_places: list[str] | None = None
+) -> tuple[list[dict], str, dict]:
     """
     Two-Tier ChromaDB Retrieval + Corrective RAG Decision Gate.
+
+    Args:
+        query (str): The search query.
+        top_k (int): Maximum chunks to retrieve (default: 5).
+        target_places (list[str] | None): Optional inherited or known place identifiers.
 
     Returns:
         tuple[list[dict], str, dict]:
@@ -282,11 +334,14 @@ def retrieve_from_chromadb(query: str, top_k: int = 5) -> tuple[list[dict], str,
             - diagnostics: dictionary containing routing metrics and candidate stats
     """
     total_docs = embedding.collection.count()
+    detected_in_query = detect_mentioned_places(query)
+    effective_places = list(dict.fromkeys((target_places or []) + detected_in_query))
+
     diagnostics = {
         "categories_detected": detect_query_categories(query),
         "total_docs_in_db": total_docs,
         "is_live_query": any(kw in query.lower() for kw in LIVE_KEYWORDS),
-        "mentioned_places": detect_mentioned_places(query),
+        "mentioned_places": effective_places,
         "candidates": [],
         "reason": ""
     }
@@ -583,12 +638,13 @@ def run_agent_workflow(goal_or_place: str):
 
 
 def execute_gemini_generation(
-    contents: str,
+    contents: str | list[types.Content],
     enable_search: bool = False
 ) -> tuple[types.GenerateContentResponse, str]:
     """
     Executes content generation using MODEL_ID (gemini-3.6-flash) with graceful
     fallback to FALLBACK_MODEL_ID (gemini-2.5-flash) if needed.
+    Supports either single-turn string or multi-turn list[types.Content].
     """
     tools = [types.Tool(google_search=types.GoogleSearch())] if enable_search else None
     config = types.GenerateContentConfig(
@@ -596,7 +652,7 @@ def execute_gemini_generation(
         tools=tools
     )
 
-    models_to_try = [MODEL_ID, FALLBACK_MODEL_ID]
+    models_to_try = [MODEL_ID, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"]
     last_err = None
 
     for m in models_to_try:
@@ -720,6 +776,203 @@ Provide an accurate, secular, professional, and practical guide response:"""
 generate_dilliguide_answer = generate_dilli_darshan_answer
 
 
+class DilliDarshanChatSession:
+    """
+    Stateful Multi-Turn Chat Session for Dilli Darshan.
+    Maintains conversational memory (history turns), logs of prior exchanges,
+    and contextual active place tracking across follow-up queries.
+    """
+    def __init__(self, max_history_turns: int = 10):
+        self.history: list[types.Content] = []
+        self.turn_logs: list[dict] = []
+        self.last_active_places: list[str] = []
+        self.max_history_turns: int = max_history_turns
+
+    def reset_session(self):
+        """Clears conversational history, turn logs, and active context place."""
+        self.history.clear()
+        self.turn_logs.clear()
+        self.last_active_places.clear()
+
+    def resolve_contextual_query(self, raw_query: str) -> tuple[str, list[str], bool]:
+        """
+        Determines the effective query and target places.
+        If explicit places are found, updates last_active_places.
+        If no explicit place is mentioned, but last_active_places is non-empty,
+        detects follow-up intent (pronouns, category questions) and inherits the active monument.
+
+        Returns:
+            tuple[str, list[str], bool]: (effective_query, active_places, is_followup)
+        """
+        detected_places = detect_mentioned_places(raw_query)
+
+        # 1. Explicit place(s) mentioned in current turn
+        if detected_places:
+            self.last_active_places = detected_places
+            return raw_query, detected_places, False
+
+        # 2. Follow-Up Resolution: If no explicit place is mentioned, AND last_active_places is non-empty
+        if self.last_active_places:
+            q_lower = raw_query.lower()
+
+            # Pronoun / reference triggers
+            has_pronoun = bool(
+                re.search(r"\b(it|its|there|this place|that place|that|here|their|them|the place)\b", q_lower)
+            )
+
+            # Category question / travel planning question triggers
+            has_category_kw = bool(detect_query_categories(raw_query))
+            has_travel_kw = any(w in q_lower for w in [
+                "timing", "ticket", "fee", "cost", "metro", "reach", "food", "cafe",
+                "photo", "camera", "allowed", "dress", "rule", "open", "close", "time",
+                "nearest", "gate", "distance", "worth", "visit", "architecture", "history", "guide"
+            ])
+
+            if has_pronoun or has_category_kw or has_travel_kw:
+                # Inherit active monument from previous turn
+                active_key = self.last_active_places[0]
+                corpus = get_known_corpus_places()
+                active_title = active_key.replace("_", " ").title()
+                if active_key in corpus and corpus[active_key]:
+                    candidate = corpus[active_key][0].title()
+                    if len(candidate) > 3:
+                        active_title = candidate
+
+                resolved_search_query = f"{active_title}: {raw_query}"
+                return resolved_search_query, self.last_active_places, True
+
+        return raw_query, [], False
+
+    def send_message(self, raw_query: str) -> dict:
+        """
+        Processes a single user turn in the multi-turn session:
+        1. Contextual resolution (query rewriting & place inheritance)
+        2. ChromaDB retrieval with active place verification
+        3. TinyFish live web search if needed
+        4. Multi-turn Gemini generation with history context
+        5. Logs turn and updates conversational memory
+        """
+        effective_query, active_places, is_followup = self.resolve_contextual_query(raw_query)
+
+        # Step 2: Retrieve from ChromaDB with active_places passed for verification
+        chunks, status, diagnostics = retrieve_from_chromadb(effective_query, target_places=active_places)
+
+        # Format local guidebook chunks
+        if chunks:
+            blocks = []
+            for idx, c in enumerate(chunks, start=1):
+                meta = c.get("metadata", {})
+                monument = meta.get("monument", "Delhi Monument")
+                section = meta.get("section", "General")
+                subsec = meta.get("subsection", "")
+                sec_display = f"{section} > {subsec}" if subsec else section
+                sim = c.get("similarity", round(1.0 - c.get("distance", 0.0), 4))
+                chunk_id = c.get("id", f"c_{idx}")
+
+                blocks.append(
+                    f"[Chunk {idx} | ID: {chunk_id} | Monument: {monument} | Section: {sec_display} | Similarity: {sim:.2%}]\n"
+                    f"{c.get('text', '').strip()}"
+                )
+            local_context = "\n\n".join(blocks)
+        else:
+            local_context = "No verified local guidebook chunks available for this location."
+
+        tf_data = None
+        live_engine = "Local ChromaDB Vector RAG"
+        web_queries_used = []
+        web_sources = []
+
+        # Step 3: Live web research if needed
+        if status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB"):
+            tf_data = tinyfish_live_search_and_fetch(effective_query, max_urls=3)
+            if tf_data.get("success") and tf_data.get("markdown_context"):
+                live_engine = "TinyFish Python SDK (Active Live Search & Markdown Fetch)"
+                web_sources = tf_data.get("sources", [])
+                web_queries_used = [tf_data.get("query", effective_query)]
+
+        # Step 4: Build grounded prompt for the current turn
+        place_label = ", ".join(p.replace("_", " ").title() for p in active_places) if active_places else "General Delhi"
+        if tf_data and tf_data.get("markdown_context"):
+            grounded_turn_prompt = f"""Verified Local Guidebook Context:
+{local_context}
+
+Verified Live Web Research Context (via TinyFish Live Web Engine):
+{tf_data['markdown_context']}
+
+User Question: {raw_query}
+Active Target Landmark: {place_label}
+Retrieval Mode: {status}
+
+Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session:"""
+        else:
+            grounded_turn_prompt = f"""Verified Local Guidebook Context:
+{local_context}
+
+User Question: {raw_query}
+Active Target Landmark: {place_label}
+Retrieval Mode: {status}
+
+Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session:"""
+
+        # Build multi-turn contents list for Gemini
+        recent_history = self.history[-self.max_history_turns * 2:]
+        contents_list = list(recent_history)
+        contents_list.append(
+            types.Content(role="user", parts=[types.Part.from_text(text=grounded_turn_prompt)])
+        )
+
+        enable_search = (status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB")) and not (tf_data and tf_data.get("markdown_context"))
+        response, model_used = execute_gemini_generation(contents=contents_list, enable_search=enable_search)
+        answer_text = response.text or ""
+
+        # Extract Google Search Grounding metadata if fallback was triggered
+        if response.candidates and response.candidates[0].grounding_metadata:
+            gm = response.candidates[0].grounding_metadata
+            if gm.web_search_queries and not web_queries_used:
+                web_queries_used = list(gm.web_search_queries)
+                live_engine = "Gemini Google Search Grounding (Fallback)"
+            if gm.grounding_chunks and not web_sources:
+                for gc in gm.grounding_chunks:
+                    if getattr(gc, "web", None):
+                        web_sources.append({
+                            "title": gc.web.title or "Live Web Resource",
+                            "uri": gc.web.uri or ""
+                        })
+
+        # Append clean exchange to session history
+        self.history.append(types.Content(role="user", parts=[types.Part.from_text(text=raw_query)]))
+        self.history.append(types.Content(role="model", parts=[types.Part.from_text(text=answer_text)]))
+
+        turn_index = len(self.turn_logs) + 1
+        turn_summary = {
+            "turn": turn_index,
+            "user_query": raw_query,
+            "resolved_query": effective_query,
+            "place": active_places,
+            "status": status,
+            "answer": answer_text,
+            "is_followup": is_followup,
+            "model_used": model_used
+        }
+        self.turn_logs.append(turn_summary)
+
+        return {
+            "answer": answer_text,
+            "web_queries": web_queries_used,
+            "web_sources": web_sources,
+            "model_used": model_used,
+            "status": status,
+            "chunks": chunks,
+            "tf_data": tf_data,
+            "live_engine": live_engine,
+            "diagnostics": diagnostics,
+            "effective_query": effective_query,
+            "is_followup": is_followup,
+            "active_places": active_places,
+            "turn_number": turn_index
+        }
+
+
 # ==============================================================================
 # STAGE 4: Self-Learning Cache
 # ==============================================================================
@@ -840,7 +1093,8 @@ def display_diagnostic_panel(
     query: str,
     status: str,
     diagnostics: dict,
-    result: dict
+    result: dict,
+    chat_session: "DilliDarshanChatSession | None" = None
 ):
     """Renders the comprehensive Terminal Diagnostic Panel before displaying answer."""
     categories = diagnostics.get("categories_detected", [])
@@ -864,12 +1118,22 @@ def display_diagnostic_panel(
     tf_data = result.get("tf_data")
     web_queries = result.get("web_queries", [])
 
+    # Multi-turn session context diagnostics
+    turn_num = result.get("turn_number") or (len(chat_session.turn_logs) if chat_session else 1)
+    active_places = result.get("active_places") or (chat_session.last_active_places if chat_session else diagnostics.get("mentioned_places", []))
+    history_count = len(chat_session.history) // 2 if chat_session else 0
+    is_followup = result.get("is_followup", False)
+    effective_query = result.get("effective_query", query)
+
     console.print()
     console.print("=" * 80, style="cyan")
     console.print(f"             [bold yellow]🧭 Dilli Darshan Terminal Diagnostic Panel[/bold yellow]", justify="center")
     console.print("=" * 80, style="cyan")
 
     console.print(f"• [bold]User Query:[/bold] {query}")
+    console.print(f"• [bold]Session Turn & Memory:[/bold] Turn #{turn_num} | Active Context Place: {active_places} | History: {history_count} prior exchanges")
+    if is_followup:
+        console.print(f"• [bold]Resolved Search Query:[/bold] [bold yellow]\"{effective_query}\"[/bold yellow] [dim](Inherited from chat context)[/dim]")
     console.print(f"• [bold]Query Categories Detected:[/bold] {cats_display}")
     console.print(f"• [bold]Routing Decision:[/bold] [{decision_style}]{decision_label}[/{decision_style}]")
     console.print(f"• [bold]Routing Rationale:[/bold] [italic]{diagnostics.get('reason', '')}[/italic]")
@@ -925,19 +1189,58 @@ def display_diagnostic_panel(
     console.print()
 
 
-def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
-    """Executes the complete retrieval, generation, and caching pipeline for a query."""
-    with console.status("[bold cyan]Evaluating ChromaDB & routing query...", spinner="dots"):
-        chunks, status, diagnostics = retrieve_from_chromadb(query)
+def show_session_history(chat_session: DilliDarshanChatSession):
+    """Displays a clean Rich table of all turns in the current chat window."""
+    if not chat_session.turn_logs:
+        console.print("\n[yellow]No conversation history in the current session yet.[/yellow]\n")
+        return
 
-    with console.status("[bold cyan]Generating answer with Gemini & Grounding...", spinner="dots"):
-        result = generate_dilli_darshan_answer(query, chunks, status)
+    table = Table(title="🏛️  Dilli Darshan - Multi-Turn Session History", show_header=True, header_style="bold cyan")
+    table.add_column("Turn #", justify="center", style="cyan", width=8)
+    table.add_column("User Question", style="white", max_width=40)
+    table.add_column("Active Place", style="green", max_width=25)
+    table.add_column("Routing Mode", style="yellow", max_width=20)
+    table.add_column("Follow-up?", justify="center", style="magenta", width=12)
+
+    for entry in chat_session.turn_logs:
+        t_num = str(entry.get("turn", ""))
+        q = entry.get("user_query", "")
+        places = ", ".join(p.replace("_", " ").title() for p in entry.get("place", [])) or "General Delhi"
+        mode = entry.get("status", "")
+        is_fup = "✓ Yes" if entry.get("is_followup") else "No"
+        table.add_row(t_num, q, places, mode, is_fup)
+
+    console.print("\n")
+    console.print(table)
+    console.print()
+
+
+def run_query_pipeline(
+    query: str,
+    chat_session: DilliDarshanChatSession | None = None,
+    auto_cache_enabled: bool = False
+):
+    """Executes the complete retrieval, generation, and caching pipeline for a query."""
+    if chat_session:
+        with console.status("[bold cyan]Evaluating context & generating answer with Dilli Darshan...", spinner="dots"):
+            result = chat_session.send_message(query)
+        status = result.get("status", "LOCAL_HIT")
+        diagnostics = result.get("diagnostics", {})
+        effective_query = result.get("effective_query", query)
+    else:
+        with console.status("[bold cyan]Evaluating ChromaDB & routing query...", spinner="dots"):
+            chunks, status, diagnostics = retrieve_from_chromadb(query)
+
+        with console.status("[bold cyan]Generating answer with Gemini & Grounding...", spinner="dots"):
+            result = generate_dilli_darshan_answer(query, chunks, status)
+        effective_query = query
 
     display_diagnostic_panel(
         query=query,
         status=status,
         diagnostics=diagnostics,
-        result=result
+        result=result,
+        chat_session=chat_session
     )
 
     # Display Answer
@@ -952,7 +1255,7 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
     )
 
     # Display Web Sources if present
-    if result["web_sources"]:
+    if result.get("web_sources"):
         console.print("\n[bold yellow]Live Grounding Sources:[/bold yellow]")
         for s in result["web_sources"][:4]:
             console.print(f"  • [blue underline]{s['title']}[/blue underline]: [dim]{s['uri']}[/dim]")
@@ -970,7 +1273,7 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
 
         if should_cache:
             with console.status("[bold cyan]Structuring and saving 100% complete guide to ChromaDB cache...", spinner="dots"):
-                ok, saved_path, count = auto_cache_new_place(query, result["answer"])
+                ok, saved_path, count = auto_cache_new_place(effective_query, result["answer"])
             if ok:
                 console.print(f"[bold green]✓ Successfully cached![/bold green] Saved [yellow]{saved_path}[/yellow] ({count} chunks added to ChromaDB).")
                 console.print(f"[dim]ChromaDB total now: {embedding.collection.count()} chunks.[/dim]\n")
@@ -983,14 +1286,15 @@ def print_banner():
     backup_info = f" (Backup: {embedding.client.backup_label})" if getattr(embedding.client, "backup_label", None) else ""
     console.print(
         Panel.fit(
-            f"[bold cyan]Connected to ChromaDB:[/bold cyan] [green]{embedding.collection.name}[/green] ([yellow]{total_docs} chunks[/yellow])\n"
-            f"[bold cyan]Gemini Client Key:[/bold cyan]     [green]{getattr(embedding.client, 'active_label', 'API_Key')}[/green][dim]{backup_info}[/dim]\n"
-            f"[bold cyan]Active Generation Model:[/bold cyan] [green]{MODEL_ID}[/green] (Fallback: [dim]{FALLBACK_MODEL_ID}[/dim])\n"
+            f"[bold cyan]Connected to ChromaDB:[/bold cyan]    [green]{embedding.collection.name}[/green] ([yellow]{total_docs} chunks[/yellow])\n"
+            f"[bold cyan]Gemini Client Key:[/bold cyan]        [green]{getattr(embedding.client, 'active_label', 'API_Key')}[/green][dim]{backup_info}[/dim]\n"
+            f"[bold cyan]Active Generation Model:[/bold cyan]  [green]{MODEL_ID}[/green] (Fallback: [dim]{FALLBACK_MODEL_ID}[/dim])\n"
+            f"[bold cyan]Multi-Turn Chat Session:[/bold cyan]  [bold green]Stateful Context & Memory Active[/bold green]\n"
             f"[bold cyan]Live Search & Extraction:[/bold cyan] [bold green]TinyFish Python SDK[/bold green] (Fallback: Google Grounding)\n"
             f"[bold cyan]Autonomous Browser Agent:[/bold cyan] [bold green]TinyFish Agent Ready[/bold green] (Type '/agent <task>')\n"
             f"[bold cyan]Self-Learning Cache:[/bold cyan]     [bold green]READY[/bold green] (Auto-creates 100% complete .md & embeds)\n\n"
-            "[dim]Commands: Type query, '/agent <task>', '--auto-cache', 'stats', 'clear', or 'exit'.[/dim]",
-            title="[bold yellow]🏛️  Dilli Darshan - Terminal Retrieval & Generation Engine[/bold yellow]",
+            "[dim]Commands: Type query, 'history' (/history), 'new' (/new, resetchat), '/agent <task>', '--auto-cache', 'stats', 'clear', or 'exit'.[/dim]",
+            title="[bold yellow]🏛️  Dilli Darshan - Stateful Multi-Turn Retrieval & Generation Engine[/bold yellow]",
             border_style="cyan",
             padding=(1, 2)
         )
@@ -1016,6 +1320,8 @@ def show_stats():
 def main():
     print_banner()
 
+    chat_session = DilliDarshanChatSession()
+
     # CLI argument mode: Check for --agent / -ag
     if "--agent" in sys.argv or "-ag" in sys.argv:
         flag = "--agent" if "--agent" in sys.argv else "-ag"
@@ -1037,18 +1343,21 @@ def main():
         if query.lower() == "stats":
             show_stats()
             return
+        elif query.lower() in ("history", "/history"):
+            show_session_history(chat_session)
+            return
         elif query.lower() in ("clear", "reset"):
             confirm = console.input("[bold red]Are you sure you want to clear ChromaDB? (y/N): [/bold red]").strip().lower()
             if confirm in ("y", "yes"):
                 embedding.clear_database()
             return
-        run_query_pipeline(query, auto_cache_enabled=auto_cache_flag)
+        run_query_pipeline(query, chat_session=chat_session, auto_cache_enabled=auto_cache_flag)
         return
 
     # Interactive Loop
     while True:
         try:
-            query = console.input("\n[bold magenta]Ask Dilli Darshan (or 'exit' / 'stats' / '/agent <task>'): [/bold magenta]").strip()
+            query = console.input("\n[bold magenta]Ask Dilli Darshan (or 'history' / 'new' / 'exit' / 'stats' / '/agent <task>'): [/bold magenta]").strip()
         except (KeyboardInterrupt, EOFError):
             console.print("\n[bold yellow]Exiting Dilli Darshan. Safe travels and have a wonderful journey![/bold yellow]\n")
             break
@@ -1059,6 +1368,15 @@ def main():
         if query.lower() in ("exit", "quit", "q"):
             console.print("\n[bold yellow]Thank you for exploring with Dilli Darshan! Have a wonderful journey across Delhi.[/bold yellow]\n")
             break
+
+        if query.lower() in ("history", "/history"):
+            show_session_history(chat_session)
+            continue
+
+        if query.lower() in ("new", "/new", "resetchat", "/resetchat"):
+            chat_session.reset_session()
+            console.print("\n[bold green]✓ Chat session memory reset. Starting a fresh conversation![/bold green]\n")
+            continue
 
         if query.lower() == "stats":
             show_stats()
@@ -1078,7 +1396,7 @@ def main():
                 embedding.clear_database()
             continue
 
-        run_query_pipeline(query, auto_cache_enabled=auto_cache_flag)
+        run_query_pipeline(query, chat_session=chat_session, auto_cache_enabled=auto_cache_flag)
 
 
 if __name__ == "__main__":

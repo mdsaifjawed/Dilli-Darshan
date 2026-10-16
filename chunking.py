@@ -70,30 +70,49 @@ def detect_category(section_title: str) -> str:
     title_lower = (section_title or "").lower()
 
     # 1. Quick Facts (Highest priority so summaries/reference data are categorized properly)
-    if any(k in title_lower for k in ["quick reference", "summary", "entity retrieval", "quick facts"]):
+    if any(k in title_lower for k in [
+        "quick reference", "summary", "entity retrieval", "quick facts",
+        "introduction", "overview", "final summary", "important tips",
+        "worth visiting", "suggested visit plan", "one-day visit", "tips",
+        "itinerary", "highlights", "facts"
+    ]):
         return "quick_facts"
 
     # 2. Timings and Tickets (Takes precedence over general terms like structure)
-    if any(k in title_lower for k in ["timing", "ticket", "guideline", "show", "security", "closure", "fee", "operating"]):
+    if any(k in title_lower for k in [
+        "timing", "ticket", "guideline", "show", "security", "closure", "fee", "operating",
+        "opening days", "visiting timings", "entry ticket", "other costs", "other expenses",
+        "dress code", "etiquette", "visitor rules", "budget", "entry", "cost", "price",
+        "hours", "pass", "admission", "fare"
+    ]):
         return "timings_and_tickets"
 
     # 3. Transit and Metro
-    if any(k in title_lower for k in ["reach", "transit", "metro", "rail", "bus", "airport", "station"]):
+    if any(k in title_lower for k in [
+        "reach", "transit", "metro", "rail", "bus", "airport", "station",
+        "how to reach", "railway station", "by car", "by delhi metro", "local transport",
+        "route", "direction", "dmrc", "transport"
+    ]):
         return "transit_and_metro"
 
     # 4. Food and Dining
     if any(k in title_lower for k in [
         "restaurant", "culinary", "dining", "food", "eater", "cafe",
-        "cuisine", "snack", "street food", "delicac"
+        "cuisine", "snack", "street food", "delicac",
+        "food court", "haldiram", "lunch", "coffee", "cafeteria",
+        "chaat", "sweet", "mithai", "eateries", "dish", "bakery", "biryani"
     ]):
         return "food_and_dining"
 
     # 5. History and Architecture ("structure" removed to avoid misclassifying fee structure)
-    if any(k in title_lower for k in ["history", "heritage", "architect", "chronolog", "mughal", "dynasty", "fortress"]):
+    if any(k in title_lower for k in [
+        "history", "heritage", "architect", "chronolog", "mughal", "dynasty", "fortress",
+        "significance", "special features", "main attractions", "locomotives", "gallery", "exhibits",
+        "attraction", "gate", "palace", "mahal", "monument", "masjid", "fort", "diwan", "baoli", "tomb"
+    ]):
         return "history_and_architecture"
 
     return "general"
-
 
 
 def chunk_markdown_text(
@@ -122,6 +141,40 @@ def chunk_markdown_text(
         return []
 
     clean_stem = place_id.replace(" ", "_").lower()
+
+    # 1. Derive canonical monument_title from place_id (stripped of suffixes like _guide)
+    CANONICAL_PLACE_TITLES = {
+        "air_force_museum": "Air Force Museum",
+        "akshardham": "Akshardham Temple",
+        "akshardham_guide": "Akshardham Temple",
+        "craft_museum": "National Crafts Museum",
+        "gandhi_samriti_museum": "Gandhi Smriti Museum",
+        "india_gate": "India Gate",
+        "indra_gandhi_museum": "Indira Gandhi Memorial Museum",
+        "jama_masjid": "Jama Masjid",
+        "jama_masjid_guide": "Jama Masjid",
+        "jantar_mantar": "Jantar Mantar",
+        "lal_qila": "Lal Qila",
+        "lalquila": "Lal Qila",
+        "pm_snagyaly": "Pradhanmantri Sangrahalaya",
+        "qutub_minar": "Qutub Minar",
+        "rail_museum": "National Rail Museum",
+        "red_fort": "Lal Qila",
+        "lotus_temple": "Lotus Temple",
+        "humayuns_tomb": "Humayun's Tomb",
+        "sunder_nursery": "Sunder Nursery"
+    }
+
+    raw_base = clean_stem
+    for sfx in ("_guide", "-guide", "_pdf"):
+        if raw_base.endswith(sfx):
+            raw_base = raw_base[:-len(sfx)]
+
+    canonical_monument_title = (
+        CANONICAL_PLACE_TITLES.get(clean_stem)
+        or CANONICAL_PLACE_TITLES.get(raw_base)
+        or raw_base.replace("_", " ").strip().title()
+    )
 
     # 1. Semantic splitting on Markdown headers
     headers_to_split_on = [
@@ -156,19 +209,58 @@ def chunk_markdown_text(
     chunks: list[PDFChunk] = []
     chunk_counter = 0
 
+    def looks_like_section_header(hdr: str | None) -> bool:
+        if not hdr:
+            return False
+        # Strip markdown formatting (*, _, #) first
+        h = clean_header_text(hdr).strip()
+        if not h:
+            return False
+        # Starts with number/letter like "1.", "2.", "A.", "B.", "Morning", "Evening", "From ", "By "
+        if re.match(r"^(\d+[\.\)]|[a-zA-Z][\.\)]|\b(morning|evening|afternoon|first\s|from\s|by\s))", h, re.IGNORECASE):
+            return True
+        # Matches any category keyword in detect_category
+        if detect_category(h) != "general":
+            return True
+        # Check if it is not the document's main title
+        clean_canon = canonical_monument_title.lower()
+        if clean_canon and h.lower() != clean_canon and h.lower() != raw_base.replace("_", " "):
+            if any(term in h.lower() for term in ("tourist guide", "visitor guide")):
+                return False
+            # Any subheader that isn't the document's main monument title
+            return True
+        return False
+
     for doc in header_docs:
         raw_monument = doc.metadata.get("monument")
         raw_section = doc.metadata.get("section")
         raw_subsection = doc.metadata.get("subsection")
 
-        # Clean markdown bold/italic asterisks (* and _) and hashes
-        monument = clean_header_text(raw_monument) or clean_stem.replace("_", " ").title()
-        section = clean_header_text(raw_section) or "General"
-        subsection = clean_header_text(raw_subsection) or ""
+        cleaned_monument = clean_header_text(raw_monument)
+        cleaned_section = clean_header_text(raw_section)
+        cleaned_subsection = clean_header_text(raw_subsection)
 
-        # Detect category based on combined section and subsection
-        combined_title = f"{section} {subsection}".strip()
-        category = detect_category(combined_title)
+        # Fix H1 (#) Header Bug:
+        # If raw_section is None or empty, AND raw_monument looks like a section header:
+        if not cleaned_section or cleaned_section == "General":
+            if looks_like_section_header(raw_monument):
+                section = cleaned_monument
+                monument = canonical_monument_title
+            else:
+                if cleaned_monument and cleaned_monument.lower() in ("delhi tourist guide", "visitor guide", "tourist guide"):
+                    monument = canonical_monument_title
+                else:
+                    monument = cleaned_monument or canonical_monument_title
+                section = cleaned_section or "General"
+        else:
+            monument = canonical_monument_title if (cleaned_monument and cleaned_monument.lower() in ("delhi tourist guide", "visitor guide")) else (cleaned_monument or canonical_monument_title)
+            section = cleaned_section
+
+        subsection = cleaned_subsection or ""
+
+        # Always run detect_category() on f"{raw_monument or ''} {section} {subsection}"
+        category_search_text = f"{raw_monument or ''} {section} {subsection}".strip()
+        category = detect_category(category_search_text)
 
         # Context header to prevent orphaned chunks
         if subsection:
