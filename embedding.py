@@ -161,7 +161,7 @@ chroma_client = chromadb.PersistentClient(path=DB_PATH)
 
 # 3. Create or load collection
 collection = chroma_client.get_or_create_collection(
-    name="dilli_guide_collection",
+    name="dilli_darshan_collection",
     metadata={"hnsw:space": "cosine"}
 )
 
@@ -239,7 +239,7 @@ def add_documents(doc_ids: list[str], texts: list[str], metadatas: list[dict] = 
 def cleanup_collections():
     """Deletes test collections (like test_sanitize) and ensures clean state."""
     for col in chroma_client.list_collections():
-        if col.name != "dilli_guide_collection":
+        if col.name != "dilli_darshan_collection":
             try:
                 chroma_client.delete_collection(col.name)
                 print(f"Deleted test/orphan collection: '{col.name}'")
@@ -252,11 +252,11 @@ def clear_database():
     global collection
     cleanup_collections()
     try:
-        chroma_client.delete_collection("dilli_guide_collection")
+        chroma_client.delete_collection("dilli_darshan_collection")
     except Exception:
         pass
     collection = chroma_client.get_or_create_collection(
-        name="dilli_guide_collection",
+        name="dilli_darshan_collection",
         metadata={"hnsw:space": "cosine"}
     )
     print(f"Collection '{collection.name}' has been cleared (0 documents).")

@@ -206,8 +206,8 @@ def ingest_autonomous_place(place_name: str) -> bool:
 
     # 2. Structure into 5-Section Markdown Guide using Gemini
     with console.status("[bold cyan]Synthesizing complete 5-section guidebook with Gemini...", spinner="dots"):
-        structuring_prompt = f"""You are an expert travel editor for DilliGuide.
-Create our standardized, high-quality 5-section DilliGuide guidebook for: {clean_name}.
+        structuring_prompt = f"""You are an expert travel editor for Dilli Darshan.
+Create our standardized, high-quality 5-section Dilli Darshan guidebook for: {clean_name}.
 
 Live Web Research Context:
 {tf_data['markdown_context']}
@@ -285,7 +285,7 @@ Do not include backticks (```markdown ... ```) around the entire output. Return 
 
 def reset_and_reingest(target_pdf: str = "lalquila.pdf"):
     """
-    One-time cleanup: Cleans orphan test collections, resets dilli_guide_collection,
+    One-time cleanup: Cleans orphan test collections, resets dilli_darshan_collection,
     and re-ingests target PDF to start 100% clean with v2 chunks.
     """
     console.print(Panel("[bold yellow]Database Reset & Clean Ingestion[/bold yellow]\nCleaning test collections and resetting ChromaDB...", border_style="yellow"))
@@ -301,7 +301,7 @@ def reset_and_reingest(target_pdf: str = "lalquila.pdf"):
 
 def main():
     console.print("=" * 60)
-    console.print("         [bold yellow]DilliGuide - Ingestion & Knowledge Engine[/bold yellow]")
+    console.print("         [bold yellow]Dilli Darshan - Ingestion & Knowledge Engine[/bold yellow]")
     console.print("=" * 60)
     console.print(f"Connected to ChromaDB Collection: [bold green]'{embedding.collection.name}'[/bold green]")
     console.print(f"Current documents in database:    [bold yellow]{embedding.collection.count()}[/bold yellow]")

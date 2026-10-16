@@ -402,11 +402,11 @@ def retrieve_from_chromadb(query: str, top_k: int = 5) -> tuple[list[dict], str,
 # ==============================================================================
 # STAGE 3: Hybrid Answer Generation with Google Search Grounding
 # ==============================================================================
-SYSTEM_INSTRUCTION = """You are DilliGuide, a professional, secular, and objective AI tour guide for New Delhi, India.
+SYSTEM_INSTRUCTION = """You are Dilli Darshan, a professional, secular, and objective AI tour guide for New Delhi, India.
 
 Core Communication Guidelines:
 1. Tone & Demeanor: Maintain a strictly secular, universal, welcoming, and professional tone suitable for all visitors and citizens regardless of religious, cultural, or ethnic background.
-2. Neutral Language & Salutations: Do NOT use religious, faith-based, or culturally specific greetings or phrases such as "Namaste", "Pranam", "As-salamu alaykum", "Sat Sri Akaal", or similar sectarian salutations. If greeting the user, use universal, modern phrases such as "Hello!", "Welcome to DilliGuide!", or proceed directly to the helpful information.
+2. Neutral Language & Salutations: Do NOT use religious, faith-based, or culturally specific greetings or phrases such as "Namaste", "Pranam", "As-salamu alaykum", "Sat Sri Akaal", or similar sectarian salutations. If greeting the user, use universal, modern phrases such as "Hello!", "Welcome to Dilli Darshan!", or proceed directly to the helpful information.
 3. Historical & Cultural Objectivity: Present Delhi's rich multicultural heritage—including Mughal architecture, ancient Hindu monuments, Sikh shrines, British colonial landmarks, and modern cultural institutions—with neutral, scholarly, and factual accuracy.
 4. Verified Local Guidebook Context: When Verified Local Guidebook Context is provided and relevant, prioritize its exact figures (Metro Gate numbers, ASI ticket prices, timings, historical facts, and nearby eateries).
 5. Live Google Search Grounding: When Local Context is missing for the requested place OR the user asks for real-time/current information, use your Google Search tool to fetch accurate, up-to-date New Delhi information (DMRC metro station & gate, ASI/official ticket fees, opening hours, weekly closure day, and iconic nearby food spots).
@@ -614,7 +614,7 @@ def execute_gemini_generation(
     raise RuntimeError(f"All Gemini generation models failed. Last error: {last_err}")
 
 
-def generate_dilliguide_answer(query: str, chunks: list[dict], status: str) -> dict:
+def generate_dilli_darshan_answer(query: str, chunks: list[dict], status: str) -> dict:
     """
     Generates a grounded response using local context and/or live TinyFish web research,
     with graceful fallback to Gemini Google Search Grounding if necessary.
@@ -716,6 +716,10 @@ Provide an accurate, secular, professional, and practical guide response:"""
     }
 
 
+# Backward-compatible alias
+generate_dilliguide_answer = generate_dilli_darshan_answer
+
+
 # ==============================================================================
 # STAGE 4: Self-Learning Cache
 # ==============================================================================
@@ -775,8 +779,8 @@ def auto_cache_new_place(query: str, answer_text: str) -> tuple[bool, str, int]:
     tf_data = tinyfish_live_search_and_fetch(research_query, max_urls=3)
     comprehensive_context = tf_data.get("markdown_context", "")
 
-    structuring_prompt = f"""You are an expert travel editor for DilliGuide.
-Create our standardized, high-quality 5-section DilliGuide guidebook for: {place_name}.
+    structuring_prompt = f"""You are an expert travel editor for Dilli Darshan.
+Create our standardized, high-quality 5-section Dilli Darshan guidebook for: {place_name}.
 
 Initial Information:
 {answer_text}
@@ -862,7 +866,7 @@ def display_diagnostic_panel(
 
     console.print()
     console.print("=" * 80, style="cyan")
-    console.print(f"             [bold yellow]🧭 DilliGuide Terminal Diagnostic Panel[/bold yellow]", justify="center")
+    console.print(f"             [bold yellow]🧭 Dilli Darshan Terminal Diagnostic Panel[/bold yellow]", justify="center")
     console.print("=" * 80, style="cyan")
 
     console.print(f"• [bold]User Query:[/bold] {query}")
@@ -927,7 +931,7 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
         chunks, status, diagnostics = retrieve_from_chromadb(query)
 
     with console.status("[bold cyan]Generating answer with Gemini & Grounding...", spinner="dots"):
-        result = generate_dilliguide_answer(query, chunks, status)
+        result = generate_dilli_darshan_answer(query, chunks, status)
 
     display_diagnostic_panel(
         query=query,
@@ -940,7 +944,7 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
     console.print(
         Panel(
             Markdown(result["answer"]),
-            title="[bold green]🏛️  DilliGuide Response[/bold green]",
+            title="[bold green]🏛️  Dilli Darshan Response[/bold green]",
             subtitle=f"[dim]Mode: {status} | Model: {result['model_used']}[/dim]",
             border_style="green",
             padding=(1, 2)
@@ -986,7 +990,7 @@ def print_banner():
             f"[bold cyan]Autonomous Browser Agent:[/bold cyan] [bold green]TinyFish Agent Ready[/bold green] (Type '/agent <task>')\n"
             f"[bold cyan]Self-Learning Cache:[/bold cyan]     [bold green]READY[/bold green] (Auto-creates 100% complete .md & embeds)\n\n"
             "[dim]Commands: Type query, '/agent <task>', '--auto-cache', 'stats', 'clear', or 'exit'.[/dim]",
-            title="[bold yellow]🏛️  DilliGuide - Terminal Retrieval & Generation Engine[/bold yellow]",
+            title="[bold yellow]🏛️  Dilli Darshan - Terminal Retrieval & Generation Engine[/bold yellow]",
             border_style="cyan",
             padding=(1, 2)
         )
@@ -1044,16 +1048,16 @@ def main():
     # Interactive Loop
     while True:
         try:
-            query = console.input("\n[bold magenta]Ask DilliGuide (or 'exit' / 'stats' / '/agent <task>'): [/bold magenta]").strip()
+            query = console.input("\n[bold magenta]Ask Dilli Darshan (or 'exit' / 'stats' / '/agent <task>'): [/bold magenta]").strip()
         except (KeyboardInterrupt, EOFError):
-            console.print("\n[bold yellow]Exiting DilliGuide. Safe travels and have a wonderful journey![/bold yellow]\n")
+            console.print("\n[bold yellow]Exiting Dilli Darshan. Safe travels and have a wonderful journey![/bold yellow]\n")
             break
 
         if not query:
             continue
 
         if query.lower() in ("exit", "quit", "q"):
-            console.print("\n[bold yellow]Thank you for exploring with DilliGuide! Have a wonderful journey across Delhi.[/bold yellow]\n")
+            console.print("\n[bold yellow]Thank you for exploring with Dilli Darshan! Have a wonderful journey across Delhi.[/bold yellow]\n")
             break
 
         if query.lower() == "stats":
