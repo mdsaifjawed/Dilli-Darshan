@@ -976,9 +976,11 @@ def run_query_pipeline(query: str, auto_cache_enabled: bool = False):
 
 def print_banner():
     total_docs = embedding.collection.count()
+    backup_info = f" (Backup: {embedding.client.backup_label})" if getattr(embedding.client, "backup_label", None) else ""
     console.print(
         Panel.fit(
             f"[bold cyan]Connected to ChromaDB:[/bold cyan] [green]{embedding.collection.name}[/green] ([yellow]{total_docs} chunks[/yellow])\n"
+            f"[bold cyan]Gemini Client Key:[/bold cyan]     [green]{getattr(embedding.client, 'active_label', 'API_Key')}[/green][dim]{backup_info}[/dim]\n"
             f"[bold cyan]Active Generation Model:[/bold cyan] [green]{MODEL_ID}[/green] (Fallback: [dim]{FALLBACK_MODEL_ID}[/dim])\n"
             f"[bold cyan]Live Search & Extraction:[/bold cyan] [bold green]TinyFish Python SDK[/bold green] (Fallback: Google Grounding)\n"
             f"[bold cyan]Autonomous Browser Agent:[/bold cyan] [bold green]TinyFish Agent Ready[/bold green] (Type '/agent <task>')\n"

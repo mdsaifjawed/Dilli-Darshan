@@ -304,7 +304,9 @@ def main():
     console.print("         [bold yellow]DilliGuide - Ingestion & Knowledge Engine[/bold yellow]")
     console.print("=" * 60)
     console.print(f"Connected to ChromaDB Collection: [bold green]'{embedding.collection.name}'[/bold green]")
-    console.print(f"Current documents in database:    [bold yellow]{embedding.collection.count()}[/bold yellow]\n")
+    console.print(f"Current documents in database:    [bold yellow]{embedding.collection.count()}[/bold yellow]")
+    backup_info = f" (Backup: [green]{embedding.client.backup_label}[/green])" if getattr(embedding.client, "backup_label", None) else ""
+    console.print(f"Gemini API Key:                   [bold green]{getattr(embedding.client, 'active_label', 'API_Key')}[/bold green]{backup_info}\n")
 
     # Check CLI arguments
     if len(sys.argv) > 1:
