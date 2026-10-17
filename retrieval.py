@@ -860,14 +860,15 @@ class DilliDarshanChatSession:
 
         return raw_query, [], False
 
-    def send_message(self, raw_query: str) -> dict:
+    def send_message(self, raw_query: str, user_context: dict | None = None) -> dict:
         """
         Processes a single user turn in the multi-turn session:
         1. Contextual resolution (query rewriting & place inheritance)
         2. ChromaDB retrieval with active place verification
         3. TinyFish live web search if needed
-        4. Multi-turn Gemini generation with history context
-        5. Logs turn and updates conversational memory
+        4. User Profile & Personalization prompt injection (travel_style, language)
+        5. Multi-turn Gemini generation with history context
+        6. Clean source badge extraction and conversational memory logging
         """
         effective_query, active_places, is_followup = self.resolve_contextual_query(raw_query)
 
@@ -907,7 +908,36 @@ class DilliDarshanChatSession:
                 web_sources = tf_data.get("sources", [])
                 web_queries_used = [tf_data.get("query", effective_query)]
 
-        # Step 4: Build grounded prompt for the current turn
+        # Step 4: Build personalization block if user_context is provided
+        personalization_instructions = ""
+        if user_context:
+            user_name = user_context.get("user_name") or user_context.get("name") or "Tourist"
+            travel_style = user_context.get("travel_style") or user_context.get("style") or "Heritage & History"
+            user_lang = user_context.get("language") or user_context.get("lang") or "English"
+
+            style_lower = travel_style.lower()
+            if "food" in style_lower or "market" in style_lower:
+                style_guide = "Focus heavily on culinary heritage, nearby iconic eateries, famous street food (chaat, paranthas, kebabs, kulfi, sweets), and vibrant bazaar trails alongside core monument facts."
+            elif "budget" in style_lower or "metro" in style_lower:
+                style_guide = "Emphasize transit practicality: exact Delhi Metro stations, transit lines, nearest exit gate numbers, walking directions, ticket prices, and economical tips."
+            elif "family" in style_lower or "leisure" in style_lower:
+                style_guide = "Focus on family leisure: ease of walking, park lawns, stroller accessibility, visitor comfort, peaceful resting spots, and family-friendly timings."
+            else:  # Heritage & History
+                style_guide = "Highlight deep architectural styles, builder history, dynasty eras (Mughal, Delhi Sultanate, British), inscriptions, and historical significance."
+
+            if "hindi" in user_lang.lower():
+                lang_guide = "CRITICAL: The visitor prefers Hindi. You MUST respond in clear, natural, and polite Hindi (Devanagari script), using bilingual terms where helpful (e.g. लाल किला / Lal Qila, गेट 4 / Gate 4, येलो लाइन / Yellow Line). Keep all factual timings, ticket prices, and metro facts 100% accurate to the retrieved context."
+            else:
+                lang_guide = "Respond in natural, engaging, and professional English."
+
+            personalization_instructions = f"""
+User Profile & Personalization:
+- Visitor Name: {user_name}
+- Preferred Travel Style: {travel_style} ({style_guide})
+- Preferred Language: {user_lang} ({lang_guide})
+- Tone Directive: Naturally personalize the tone and focus to the user's travel style. Address them warmly by name if greeting."""
+
+        # Step 5: Build grounded prompt for the current turn
         place_label = ", ".join(p.replace("_", " ").title() for p in active_places) if active_places else "General Delhi"
         if tf_data and tf_data.get("markdown_context"):
             grounded_turn_prompt = f"""Verified Local Guidebook Context:
@@ -919,6 +949,7 @@ Verified Live Web Research Context (via TinyFish Live Web Engine):
 User Question: {raw_query}
 Active Target Landmark: {place_label}
 Retrieval Mode: {status}
+{personalization_instructions}
 
 Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session:"""
         else:
@@ -928,6 +959,7 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
 User Question: {raw_query}
 Active Target Landmark: {place_label}
 Retrieval Mode: {status}
+{personalization_instructions}
 
 Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session:"""
 
@@ -956,9 +988,41 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
                             "uri": gc.web.uri or ""
                         })
 
+        # Determine concise source badge string for the frontend pill
+        if status == "LOCAL_HIT" and chunks:
+            monuments = []
+            for c in chunks:
+                m = c.get("metadata", {}).get("monument")
+                if m and m not in monuments:
+                    monuments.append(m)
+            if monuments:
+                clean_names = " & ".join(monuments[:2])
+                source_badge_text = f"{clean_names} Archives (ChromaDB)"
+            else:
+                source_badge_text = "Delhi Tourism & Heritage Archives (ChromaDB)"
+        elif status == "HYBRID_SUPPLEMENT":
+            source_badge_text = "ChromaDB Archives + TinyFish Live Web"
+        elif status in ("WEB_FALLBACK", "EMPTY_DB"):
+            if "TinyFish" in live_engine:
+                source_badge_text = "TinyFish Live Web + Delhi Tourism"
+            else:
+                source_badge_text = "Gemini Live Web + Delhi Tourism"
+        else:
+            source_badge_text = "Delhi Tourism Digital Desk"
+
+        # Clean any raw [Sources & Grounding] footer from the main answer body for the chat bubble
+        clean_answer = re.sub(
+            r"\n*(?:\[Sources\s*&\s*Grounding\]|###?\s*Sources(?:\s*&\s*Grounding)?|---+\s*\n\s*\*\*Sources?\*\*:?).*$",
+            "",
+            answer_text,
+            flags=re.IGNORECASE | re.DOTALL
+        ).strip()
+        if not clean_answer:
+            clean_answer = answer_text
+
         # Append clean exchange to session history
         self.history.append(types.Content(role="user", parts=[types.Part.from_text(text=raw_query)]))
-        self.history.append(types.Content(role="model", parts=[types.Part.from_text(text=answer_text)]))
+        self.history.append(types.Content(role="model", parts=[types.Part.from_text(text=clean_answer)]))
 
         turn_index = len(self.turn_logs) + 1
         turn_summary = {
@@ -967,14 +1031,18 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
             "resolved_query": effective_query,
             "place": active_places,
             "status": status,
-            "answer": answer_text,
+            "answer": clean_answer,
+            "source": source_badge_text,
             "is_followup": is_followup,
             "model_used": model_used
         }
         self.turn_logs.append(turn_summary)
 
         return {
-            "answer": answer_text,
+            "answer": clean_answer,
+            "raw_answer": answer_text,
+            "source": source_badge_text,
+            "source_badge_text": source_badge_text,
             "web_queries": web_queries_used,
             "web_sources": web_sources,
             "model_used": model_used,

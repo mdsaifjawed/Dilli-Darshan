@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DilliDarshan AI | Official Digital Delhi Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #0b0f19;
+      color: #f8fafc;
+    }
+
+    /* ==========================================
+       SMOOTH PAGE VIEW ARCHITECTURE
+    ========================================== */
+    .page-view {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      will-change: opacity, transform, filter;
+      transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), 
+                  transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .active-view {
+      opacity: 1 !important;
+      transform: scale(1) translateY(0) !important;
+      filter: blur(0px) !important;
+      pointer-events: auto !important;
+    }
+
+    .hidden-view {
+      opacity: 0 !important;
+      transform: scale(0.97) translateY(14px) !important;
+      filter: blur(8px) !important;
+      pointer-events: none !important;
+    }
+
+    /* ==========================================
+       FULLSCREEN BLURRY MONUMENT SLIDESHOW
+    ========================================== */
+    .welcome-slideshow {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      background-color: #0b0f19;
+    }
+
+    .slide {
+      position: absolute;
+      inset: -20px;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+      will-change: opacity, transform, filter;
+      animation: blurrySlideFade 24s infinite ease-in-out;
+    }
+
+    .slide:nth-child(1) { animation-delay: 0s; }
+    .slide:nth-child(2) { animation-delay: 6s; }
+    .slide:nth-child(3) { animation-delay: 12s; }
+    .slide:nth-child(4) { animation-delay: 18s; }
+
+    @keyframes blurrySlideFade {
+      0% { opacity: 0; transform: scale(1.02); filter: blur(12px); }
+      6% { opacity: 1; transform: scale(1.03); filter: blur(2px); }
+      22% { opacity: 1; transform: scale(1.06); filter: blur(2px); }
+      30% { opacity: 0; transform: scale(1.08); filter: blur(12px); }
+      100% { opacity: 0; transform: scale(1.08); filter: blur(12px); }
+    }
+
+    .welcome-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.52) 0%, rgba(11, 15, 25, 0.88) 100%);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+    }
+
+    .welcome-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+    }
+
+    /* ==========================================
+       TOP NAVIGATION BAR
+    ========================================== */
+    .top-nav {
+      width: 100%;
+      padding: 18px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      cursor: pointer;
+    }
+
+    .brand-logo span {
+      background: linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 8px #4ade80;
+    }
+
+    .account-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .account-btn:hover {
+      background: rgba(51, 65, 85, 0.95);
+      border-color: rgba(255, 255, 255, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .account-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FF9933, #138808);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #000;
+    }
+
+    /* ==========================================
+       PAGE 1: WELCOME SCREEN (TRICOLOR STYLING)
+    ========================================== */
+    .hero-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 24px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .companion-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 9999px;
+      background: rgba(255, 153, 51, 0.15);
+      border: 1px solid rgba(255, 153, 51, 0.45);
+      color: #fcd34d;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 18px;
+    }
+
+    .hero-title .tricolor-text {
+      background: linear-gradient(90deg, #FF9933 15%, #FFFFFF 52%, #138808 88%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+      text-shadow: 0 0 25px rgba(255, 153, 51, 0.2);
+    }
+
+    .hero-subtitle {
+      font-size: 1.12rem;
+      color: #cbd5e1;
+      max-width: 680px;
+      line-height: 1.6;
+      margin-bottom: 34px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+      max-width: 820px;
+      margin-bottom: 36px;
+    }
+
+    .feature-card {
+      background: rgba(30, 41, 59, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: left;
+      transition: transform 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .feature-card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 8px 0 4px;
+      color: #fff;
+    }
+
+    .feature-card p {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    .tricolor-btn {
+      padding: 16px 48px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #0b0f19;
+      background: linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      box-shadow: 0 12px 32px -4px rgba(255, 153, 51, 0.45);
+      transition: transform 0.2s, box-shadow 0.2s;
+      letter-spacing: -0.01em;
+    }
+
+    .tricolor-btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 16px 36px -4px rgba(19, 136, 8, 0.55);
+    }
+
+    .page-footer {
+      width: 100%;
+      padding: 14px 40px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* ==========================================
+       PAGE 2: LOGIN & SQL SYNC SCREEN
+    ========================================== */
+    #loginPage {
+      z-index: 15;
+    }
+
+    .login-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 480px;
+      background: rgba(30, 41, 59, 0.75);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      padding: 34px 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .login-header {
+      text-align: center;
+    }
+
+    .login-header h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .login-header p {
+      font-size: 0.86rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .form-group label {
+      font-size: 0.76rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #cbd5e1;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(15, 23, 42, 0.75);
+      color: #fff;
+      font-size: 0.94rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus, .form-select:focus {
+      border-color: #FF9933;
+    }
+
+    .form-select option {
+      background: #0f172a;
+      color: #fff;
+    }
+
+    .login-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .save-profile-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 9999px;
+      border: none;
+      background: linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+      color: #0b0f19;
+      font-size: 0.98rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .save-profile-btn:hover {
+      transform: scale(1.02);
+    }
+
+    .skip-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.84rem;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color 0.2s;
+    }
+
+    .skip-btn:hover {
+      color: #fff;
+    }
+
+    /* ==========================================
+       PAGE 3: CHAT PAGE (PLAIN DARK THEME)
+    ========================================== */
+    #questionPage {
+      z-index: 20;
+      background-color: #0b0f19;
+    }
+
+    #questionPage .top-nav {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+      background: #334155;
+    }
+
+    .chat-stream-wrapper {
+      flex: 1;
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .chat-stream-wrapper::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat-stream-wrapper::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+
+    .msg-row {
+      display: flex;
+      flex-direction: column;
+      max-width: 80%;
+    }
+
+    .msg-row.user {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .msg-row.bot {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+
+    .sender-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      margin-bottom: 5px;
+      padding: 0 4px;
+    }
+
+    .bubble {
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .msg-row.user .bubble {
+      background: #2563eb;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-row.bot .bubble {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-bottom-left-radius: 4px;
+    }
+
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #94a3b8;
+    }
+
+    .chat-bottom-dock {
+      width: 100%;
+      background: #0f172a;
+      border-top: 1px solid #1e293b;
+      padding: 16px 20px 22px;
+    }
+
+    .dock-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 7px 14px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      background: rgba(37, 99, 235, 0.35);
+      border-color: #60a5fa;
+      color: #fff;
+    }
+
+    .input-bar {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .input-bar input {
+      flex: 1;
+      padding: 15px 22px;
+      border-radius: 9999px;
+      border: 1px solid #334155;
+      background: #0b0f19;
+      color: #fff;
+      font-size: 0.98rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-bar input:focus {
+      border-color: #3b82f6;
+    }
+
+    .send-btn {
+      padding: 0 28px;
+      border-radius: 9999px;
+      border: none;
+      background: linear-gradient(90deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+      color: #0b0f19;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .send-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+      .feature-grid { grid-template-columns: 1fr; }
+      .top-nav { padding: 14px 20px; }
+      .msg-row { max-width: 90%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================
+       PAGE 1: WELCOME SCREEN (TRICOLOR + SLIDESHOW)
+  ========================================== -->
+  <section id="welcomePage" class="page-view active-view">
+   <!-- Background Slideshow with Local Offline Images -->
+<div class="slideshow-bg">
+  <div class="slide" style="background-image: url('assets/india-gate.jpg');"></div>
+  <div class="slide" style="background-image: url('assets/qutub-minar.jpg');"></div>
+  <div class="slide" style="background-image: url('assets/red-fort.jpg');"></div>
+  <div class="slide" style="background-image: url('assets/lotus-temple.jpg');"></div>
+  <div class="overlay"></div>
+</div>
+
+    <div class="welcome-content">
+      <header class="top-nav">
+        <div class="brand-logo" onclick="navigateTo('welcome')">🏛️ Dilli<span>Darshan</span> AI</div>
+        <div class="nav-actions">
+          <div class="pill"><span class="dot"></span> Delhi Heritage Live</div>
+          <button class="account-btn" onclick="navigateTo('login')">
+            <span class="account-avatar" id="navAvatar">U</span>
+            <span id="navAccountText">Account</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="hero-center">
+        <div class="companion-badge">🇮🇳 Delhi Tourism • Official Digital Companion</div>
+        <h1 class="hero-title">
+          Discover <span class="tricolor-text">Delhi's</span> Living Heritage
+        </h1>
+        <p class="hero-subtitle">
+          Your smart, real-time companion for uncovering Delhi. Get quick answers on ticket bookings, metro routes, Chandni Chowk food, and monument timings.
+        </p>
+
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div>🏛️</div>
+            <h3>Timings & Fees</h3>
+            <p>Official ASI monument opening hours, entry tickets, and evening shows.</p>
+          </div>
+          <div class="feature-card">
+            <div>🚇</div>
+            <h3>Metro Routes</h3>
+            <p>Direct DMRC metro lines, interchange stations, and nearest exit gates.</p>
+          </div>
+          <div class="feature-card">
+            <div>🥘</div>
+            <h3>Heritage & Food</h3>
+            <p>Curated Old Delhi culinary trails, markets, and cultural itineraries.</p>
+          </div>
+        </div>
+
+        <button class="tricolor-btn" onclick="handleExploreClick()">
+          Start Exploring Delhi &rarr;
+        </button>
+      </main>
+
+      <footer class="page-footer">
+        AI Tour Guide • Verified knowledge from Delhi Tourism & DMRC archives
+      </footer>
+    </div>
+  </section>
+
+
+  <!-- ==========================================
+       PAGE 2: LOGIN & SQL SYNC SCREEN
+  ========================================== -->
+  <section id="loginPage" class="page-view hidden-view">
+    <div class="welcome-slideshow">
+      <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1597042034823-3b604533036a?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1920&q=80');"></div>
+      <div class="welcome-overlay"></div>
+    </div>
+
+    <div class="welcome-content">
+      <header class="top-nav">
+        <button class="back-btn" onclick="navigateTo('welcome')">&#8592; Back to Home</button>
+        <div class="brand-logo" onclick="navigateTo('welcome')">🏛️ Dilli<span>Darshan</span> AI</div>
+        <div class="pill"><span class="dot"></span> Profile Setup</div>
+      </header>
+
+      <main class="login-center">
+        <div class="login-card">
+          <div class="login-header">
+            <h2>Personalize Your Tour</h2>
+            <p>Tailor monument advice and itineraries to your travel preferences</p>
+          </div>
+
+          <form id="profileForm" onsubmit="saveProfile(event)" style="display:flex; flex-direction:column; gap:14px;">
+            <div class="form-group">
+              <label for="userNameInput">Your Name</label>
+              <input type="text" id="userNameInput" class="form-input" placeholder="e.g. Abhinav Singh" required />
+            </div>
+
+            <div class="form-group">
+              <label for="userEmailInput">Email / Identifier</label>
+              <input type="email" id="userEmailInput" class="form-input" placeholder="e.g. tourist@delhi.com" required />
+            </div>
+
+            <div class="form-group">
+              <label for="travelStyleSelect">Travel Style</label>
+              <select id="travelStyleSelect" class="form-select">
+                <option value="Heritage & History">🏛️ Heritage & Monuments</option>
+                <option value="Food & Street Markets">🥘 Street Food & Shopping</option>
+                <option value="Budget & Metro Explorer">🚇 Budget & Public Transit</option>
+                <option value="Family Leisure">👨‍👩‍👧 Family & Easy Walks</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="languageSelect">Preferred Language</label>
+              <select id="languageSelect" class="form-select">
+                <option value="English">English</option>
+                <option value="Hindi">हिंदी (Hindi)</option>
+              </select>
+            </div>
+
+            <div class="login-actions">
+              <button type="submit" class="save-profile-btn">Save & Continue to Chat &rarr;</button>
+              <button type="button" class="skip-btn" onclick="navigateTo('chat')">Skip for now</button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <footer class="page-footer">
+        Your preferences are securely synced with the database to personalize your route
+      </footer>
+    </div>
+  </section>
+
+
+  <!-- ==========================================
+       PAGE 3: CHAT VIEW (PLAIN DARK THEME)
+  ========================================== -->
+  <section id="questionPage" class="page-view hidden-view">
+    <header class="top-nav">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <button class="back-btn" onclick="navigateTo('welcome')">&#8592; Back to Home</button>
+        <div class="brand-logo" onclick="navigateTo('welcome')">🏛️ Dilli<span>Darshan</span> AI</div>
+      </div>
+      <div class="nav-actions">
+        <div class="pill" id="connectionBadge"><span class="dot"></span> Guide Online</div>
+        <button class="account-btn" onclick="navigateTo('login')">
+          <span class="account-avatar" id="chatNavAvatar">U</span>
+          <span id="chatNavAccountText">Account</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="chat-stream-wrapper" id="chatContainer">
+      <div class="msg-row bot">
+        <span class="sender-label">TOUR BOT</span>
+        <div class="bubble" id="welcomeBotBubble">
+          Namaste! Welcome to <strong>DilliDarshan AI</strong>. Ask me anything about Delhi's historical monuments, metro routes, ticket prices, or local food spots!
+          <div>
+            <span class="source-badge">🏛️ Guide Source: Delhi Tourism Digital Desk</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="chat-bottom-dock">
+      <div class="dock-inner">
+        <div class="chip-row">
+          <button class="chip" onclick="sendQuickPrompt('What are the timings and ticket prices for Red Fort?')">🏰 Red Fort timings</button>
+          <button class="chip" onclick="sendQuickPrompt('Nearest metro station to Qutub Minar?')">🚇 Qutub Minar Metro</button>
+          <button class="chip" onclick="sendQuickPrompt('Best street food spots in Chandni Chowk?')">🥘 Chandni Chowk food trail</button>
+          <button class="chip" onclick="sendQuickPrompt('Best time to visit India Gate?')">✨ India Gate visit</button>
+        </div>
+
+        <form class="input-bar" id="chatForm">
+          <input
+            type="text"
+            id="questionInput"
+            placeholder="Ask about monuments, metro lines, food spots, or timings..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" class="send-btn">Ask &rarr;</button>
+        </form>
+      </div>
+    </footer>
+  </section>
+
+
+  <!-- ==========================================
+       JAVASCRIPT: ROUTING + SQL FASTAPI BRIDGE
+  ========================================== -->
+  <script>
+    // FastAPI Endpoints
+    const FASTAPI_BASE = "http://127.0.0.1:8000";
+    const CHAT_ENDPOINT = `${FASTAPI_BASE}/chat`;
+    const PROFILE_ENDPOINT = `${FASTAPI_BASE}/user/profile`;
+
+    // Persistent User State with SQL ID
+    let userProfile = {
+      id: localStorage.getItem("tourist_id") || null,
+      name: localStorage.getItem("tourist_name") || "",
+      email: localStorage.getItem("tourist_email") || "",
+      style: localStorage.getItem("tourist_style") || "Heritage & History",
+      language: localStorage.getItem("tourist_lang") || "English"
+    };
+
+    const welcomePage = document.getElementById("welcomePage");
+    const loginPage = document.getElementById("loginPage");
+    const questionPage = document.getElementById("questionPage");
+    const chatContainer = document.getElementById("chatContainer");
+    const chatForm = document.getElementById("chatForm");
+    const questionInput = document.getElementById("questionInput");
+    const connectionBadge = document.getElementById("connectionBadge");
+    const welcomeBotBubble = document.getElementById("welcomeBotBubble");
+
+    // Initialize UI on startup
+    updateAccountUI();
+
+    // 1. Navigation Controller (Handles smooth transitions)
+    function navigateTo(target) {
+      welcomePage.className = "page-view hidden-view";
+      loginPage.className = "page-view hidden-view";
+      questionPage.className = "page-view hidden-view";
+
+      if (target === 'welcome') {
+        welcomePage.className = "page-view active-view";
+      } else if (target === 'login') {
+        loginPage.className = "page-view active-view";
+        document.getElementById("userNameInput").value = userProfile.name;
+        document.getElementById("userEmailInput").value = userProfile.email;
+        document.getElementById("travelStyleSelect").value = userProfile.style;
+        document.getElementById("languageSelect").value = userProfile.language;
+        setTimeout(() => document.getElementById("userNameInput").focus(), 300);
+      } else if (target === 'chat') {
+        questionPage.className = "page-view active-view";
+        setTimeout(() => questionInput.focus(), 300);
+      }
+    }
+
+    function handleExploreClick() {
+      if (!userProfile.name) {
+        navigateTo('login');
+      } else {
+        navigateTo('chat');
+      }
+    }
+
+    // 2. Save User Profile to SQL Backend + localStorage
+    async function saveProfile(e) {
+      e.preventDefault();
+      const name = document.getElementById("userNameInput").value.trim();
+      const email = document.getElementById("userEmailInput").value.trim();
+      const style = document.getElementById("travelStyleSelect").value;
+      const lang = document.getElementById("languageSelect").value;
+
+      try {
+        const res = await fetch(PROFILE_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            name, 
+            email, 
+            travel_style: style, 
+            language: lang 
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user_id) {
+            userProfile.id = data.user_id;
+            localStorage.setItem("tourist_id", data.user_id);
+          }
+        }
+      } catch (err) {
+        console.warn("FastAPI SQL backend offline, cached locally:", err);
+      }
+
+      userProfile.name = name;
+      userProfile.email = email;
+      userProfile.style = style;
+      userProfile.language = lang;
+
+      localStorage.setItem("tourist_name", name);
+      localStorage.setItem("tourist_email", email);
+      localStorage.setItem("tourist_style", style);
+      localStorage.setItem("tourist_lang", lang);
+
+      updateAccountUI();
+      navigateTo('chat');
+    }
+
+    function updateAccountUI() {
+      const navAccountText = document.getElementById("navAccountText");
+      const chatNavAccountText = document.getElementById("chatNavAccountText");
+      const navAvatar = document.getElementById("navAvatar");
+      const chatNavAvatar = document.getElementById("chatNavAvatar");
+
+      if (userProfile.name) {
+        const initial = userProfile.name.charAt(0).toUpperCase();
+        navAvatar.textContent = initial;
+        chatNavAvatar.textContent = initial;
+        navAccountText.textContent = userProfile.name;
+        chatNavAccountText.textContent = userProfile.name;
+
+        welcomeBotBubble.innerHTML = `
+          Namaste <strong>${escapeHtml(userProfile.name)}</strong>! Welcome to <strong>DilliDarshan AI</strong>. I have customized recommendations for your <em>${escapeHtml(userProfile.style)}</em> preferences in <em>${escapeHtml(userProfile.language)}</em>. What would you like to explore today?
+          <div>
+            <span class="source-badge">🏛️ Guide Source: Delhi Tourism Personalized Desk</span>
+          </div>
+        `;
+      } else {
+        navAvatar.textContent = "U";
+        chatNavAvatar.textContent = "U";
+        navAccountText.textContent = "Account";
+        chatNavAccountText.textContent = "Account";
+      }
+    }
+
+    function sendQuickPrompt(queryText) {
+      submitQuestion(queryText);
+    }
+
+    chatForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = questionInput.value.trim();
+      if (!text) return;
+      questionInput.value = "";
+      submitQuestion(text);
+    });
+
+    // 3. Send Question with SQL user_id & Personalization Context
+    async function submitQuestion(userQuery) {
+      appendUserMessage(userQuery);
+      const loadingRow = appendBotMessage("Finding verified details from Delhi Tourism guides...");
+
+      try {
+        const response = await fetch(CHAT_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            query: userQuery,
+            user_id: userProfile.id ? parseInt(userProfile.id) : null,
+            user_name: userProfile.name || "Tourist",
+            travel_style: userProfile.style || "Heritage",
+            language: userProfile.language || "English"
+          })
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        connectionBadge.innerHTML = `<span class="dot"></span> FastAPI Connected`;
+
+        const answerText = data.answer || data.reply || "Here is the information I found.";
+        const sourceText = data.source || "Delhi Tourism Official Guide";
+
+        updateBotMessage(loadingRow, answerText, sourceText);
+      } catch (error) {
+        connectionBadge.innerHTML = `<span class="dot" style="background:#f59e0b; box-shadow:0 0 8px #f59e0b;"></span> Demo Mode (Backend Offline)`;
+        const fallback = getSmartFallback(userQuery);
+        updateBotMessage(loadingRow, fallback.answer, fallback.source);
+      }
+    }
+
+    function appendUserMessage(text) {
+      const row = document.createElement("div");
+      row.className = "msg-row user";
+      const displayName = userProfile.name ? escapeHtml(userProfile.name).toUpperCase() : "TOURIST";
+      row.innerHTML = `
+        <span class="sender-label">${displayName}</span>
+        <div class="bubble">${escapeHtml(text)}</div>
+      `;
+      chatContainer.appendChild(row);
+      scrollToBottom();
+    }
+
+    function appendBotMessage(text) {
+      const row = document.createElement("div");
+      row.className = "msg-row bot";
+      row.innerHTML = `
+        <span class="sender-label">TOUR BOT</span>
+        <div class="bubble">${escapeHtml(text)}</div>
+      `;
+      chatContainer.appendChild(row);
+      scrollToBottom();
+      return row;
+    }
+
+    function updateBotMessage(rowElement, answerText, sourceText) {
+      const bubble = rowElement.querySelector(".bubble");
+      bubble.innerHTML = `
+        <div>${answerText}</div>
+        ${sourceText ? `<div><span class="source-badge">🏛️ Guide Source: ${escapeHtml(sourceText)}</span></div>` : ""}
+      `;
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    function getSmartFallback(q) {
+      const lower = q.toLowerCase();
+      const greeting = userProfile.name ? `Hello <strong>${escapeHtml(userProfile.name)}</strong>! ` : "";
+      
+      if (lower.includes("red fort") || lower.includes("lal qila")) {
+        return {
+          answer: `${greeting}<strong>Red Fort (Lal Qila)</strong> is open from <strong>9:30 AM to 4:30 PM</strong> (Closed Mondays). Entry fees are ₹35 for Indian citizens and ₹500 for foreign visitors. Nearest Metro: <em>Lal Qila Station (Violet Line, Gate 4)</em>.`,
+          source: "ASI Monument Archives"
+        };
+      }
+      if (lower.includes("qutub")) {
+        return {
+          answer: `${greeting}<strong>Qutub Minar</strong> is open daily from <strong>7:00 AM to 8:00 PM</strong>. Entry is ₹35 for Indians and ₹550 for foreign nationals. Closest Metro: <em>Qutab Minar Station (Yellow Line)</em>.`,
+          source: "DMRC & Delhi Heritage Handbook"
+        };
+      }
+      if (lower.includes("india gate")) {
+        return {
+          answer: `${greeting}<strong>India Gate & Kartavya Path</strong> are open 24 hours with <strong>free entry</strong>. The monument is illuminated from <strong>7:00 PM to 9:30 PM</strong> daily. Nearest Metro: <em>Central Secretariat (Yellow/Violet Line)</em>.`,
+          source: "Delhi Tourism Official Archives"
+        };
+      }
+      return {
+        answer: `${greeting}Delhi offers rich historical landmarks and vibrant markets! Start your Python FastAPI server at <code>http://127.0.0.1:8000/chat</code> for live backend responses.`,
+        source: "Delhi Tourism Digital Companion"
+      };
+    }
+  </script>
+</body>
+</html>
