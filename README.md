@@ -644,7 +644,7 @@ Copyright (c) 2026 MD SAIF JAWED
 ## 👨‍💻 Author & Acknowledgments
 
 - **Developed by**: [MD SAIF JAWED](https://github.com/mdsaifjawed)
-- **Repository**: [mdsaifjawed/DilliGuide](https://github.com/mdsaifjawed/DilliGuide)
+- **Repository**: [mdsaifjawed/Dilli-Darshan](https://github.com/mdsaifjawed/Dilli-Darshan.git)
 - **Special Thanks**:
   - [Google Gemini Team](https://ai.google.dev/) for high-throughput multimodal & embedding models.
   - [ChromaDB](https://www.trychroma.com/) for fast, local-first vector embeddings storage.
