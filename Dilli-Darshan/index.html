@@ -1047,28 +1047,27 @@
 
     function getSmartFallback(q) {
       const lower = q.toLowerCase();
-      const greeting = userProfile.name ? `Hello <strong>${escapeHtml(userProfile.name)}</strong>! ` : "";
       
       if (lower.includes("red fort") || lower.includes("lal qila")) {
         return {
-          answer: `${greeting}<strong>Red Fort (Lal Qila)</strong> is open from <strong>9:30 AM to 4:30 PM</strong> (Closed Mondays). Entry fees are ₹35 for Indian citizens and ₹500 for foreign visitors. Nearest Metro: <em>Lal Qila Station (Violet Line, Gate 4)</em>.`,
+          answer: `<strong>Red Fort (Lal Qila)</strong> is open from <strong>9:30 AM to 4:30 PM</strong> (Closed Mondays). Entry fees are ₹35 for Indian citizens and ₹500 for foreign visitors. Nearest Metro: <em>Lal Qila Station (Violet Line, Gate 4)</em>.`,
           source: "ASI Monument Archives"
         };
       }
       if (lower.includes("qutub")) {
         return {
-          answer: `${greeting}<strong>Qutub Minar</strong> is open daily from <strong>7:00 AM to 8:00 PM</strong>. Entry is ₹35 for Indians and ₹550 for foreign nationals. Closest Metro: <em>Qutab Minar Station (Yellow Line)</em>.`,
+          answer: `<strong>Qutub Minar</strong> is open daily from <strong>7:00 AM to 8:00 PM</strong>. Entry is ₹35 for Indians and ₹550 for foreign nationals. Closest Metro: <em>Qutab Minar Station (Yellow Line)</em>.`,
           source: "DMRC & Delhi Heritage Handbook"
         };
       }
       if (lower.includes("india gate")) {
         return {
-          answer: `${greeting}<strong>India Gate & Kartavya Path</strong> are open 24 hours with <strong>free entry</strong>. The monument is illuminated from <strong>7:00 PM to 9:30 PM</strong> daily. Nearest Metro: <em>Central Secretariat (Yellow/Violet Line)</em>.`,
+          answer: `<strong>India Gate & Kartavya Path</strong> are open 24 hours with <strong>free entry</strong>. The monument is illuminated from <strong>7:00 PM to 9:30 PM</strong> daily. Nearest Metro: <em>Central Secretariat (Yellow/Violet Line)</em>.`,
           source: "Delhi Tourism Official Archives"
         };
       }
       return {
-        answer: `${greeting}Delhi offers rich historical landmarks and vibrant markets! Start your Python FastAPI server at <code>http://127.0.0.1:8000/chat</code> for live backend responses.`,
+        answer: `Delhi offers rich historical landmarks and vibrant markets! Start your Python FastAPI server at <code>http://127.0.0.1:8000/chat</code> for live backend responses.`,
         source: "Delhi Tourism Digital Companion"
       };
     }

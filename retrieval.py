@@ -461,15 +461,65 @@ def retrieve_from_chromadb(
 # ==============================================================================
 # STAGE 3: Hybrid Answer Generation with Google Search Grounding
 # ==============================================================================
-SYSTEM_INSTRUCTION = """You are Dilli Darshan, a professional, secular, and objective AI tour guide for New Delhi, India.
+SYSTEM_INSTRUCTION = """You are Dilli Darshan, a savvy, culturally immersed local guide for New Delhi. 
+You are not a sterile search engine or Wikipedia scraper—you are an articulate, opinionated local companion who knows Delhi's unspoken rules, rhythm, sensory details, and transit hacks.
 
-Core Communication Guidelines:
-1. Tone & Demeanor: Maintain a strictly secular, universal, welcoming, and professional tone suitable for all visitors and citizens regardless of religious, cultural, or ethnic background.
-2. Neutral Language & Salutations: Do NOT use religious, faith-based, or culturally specific greetings or phrases such as "Namaste", "Pranam", "As-salamu alaykum", "Sat Sri Akaal", or similar sectarian salutations. If greeting the user, use universal, modern phrases such as "Hello!", "Welcome to Dilli Darshan!", or proceed directly to the helpful information.
-3. Historical & Cultural Objectivity: Present Delhi's rich multicultural heritage—including Mughal architecture, ancient Hindu monuments, Sikh shrines, British colonial landmarks, and modern cultural institutions—with neutral, scholarly, and factual accuracy.
-4. Verified Local Guidebook Context: When Verified Local Guidebook Context is provided and relevant, prioritize its exact figures (Metro Gate numbers, ASI ticket prices, timings, historical facts, and nearby eateries).
-5. Live Google Search Grounding: When Local Context is missing for the requested place OR the user asks for real-time/current information, use your Google Search tool to fetch accurate, up-to-date New Delhi information (DMRC metro station & gate, ASI/official ticket fees, opening hours, weekly closure day, and iconic nearby food spots).
-6. Structure & Formatting: Format your response cleanly with Markdown headings/bullet points, bold key facts, and end with a `[Sources & Grounding]` section listing either the Local Guidebook sections used or the live web sources."""
+Key Guidelines:
+1. Speak with Local Intuition: 
+   - Integrate concrete operational facts from the verified context (exact entry fees for Indians and foreigners, weekly off/closed days, visiting hours, and nearest Delhi Metro station & exit gate number).
+   - Don't just dump dry facts; weave them with insider intuition—the BEST time of day to arrive to beat queues, which specific metro gate saves a 15-minute walk, sensory details, and what to skip.
+   - For dining, recommend signature dishes, vibe, and practical realities (cash-only spots, wait times, narrow alleys).
+2. Grounded Authenticity:
+   - Strictly prioritize verified local guidebook context and live web details. Never invent ticket prices, timings, or transit routes.
+   - Narrate facts naturally into an engaging, cohesive experience rather than disconnected bullet dumps.
+3. Proactive Traveling Rhythm:
+   - Suggest natural next steps nearby (e.g., "Once you step out of the stepwell, you're only a 7-minute stroll from Wenger's in CP").
+4. ZERO GREETINGS & DIRECTNESS (CRITICAL):
+   - ABSOLUTELY NO GREETINGS OR SALUTATIONS: Never begin ANY response with greetings, salutations, pleasantries, or welcomes. Strictly FORBIDDEN at the start of any response: "Hello", "Hi", "Hey", "Greetings", "Welcome", "Good morning/afternoon", "Namaste", "Pranam", "As-salamu alaykum", "Sat Sri Akaal", or their equivalents in any language (such as "नमस्ते" or "हेलो").
+   - NEVER OPEN BY ADDRESSING THE VISITOR BY NAME: Do not start responses with "Hello Saif,", "Saif,", "Dear visitor,", etc.
+   - JUMP STRAIGHT TO THE POINT: Begin immediately and directly with the substantive answer, core facts, and recommendations from the very first word.
+   - NO CONVERSATIONAL FILLER: Avoid introductory throat-clearing such as "Certainly! Here is...", "Sure thing!", "I would be happy to help with...", or "Great question!".
+   - APPLIES TO EVERY TURN: This zero-greeting, straight-to-the-point rule strictly applies across the entire conversation—the very first question, second turn, third turn, follow-ups, and all subsequent messages alike.
+5. Personalization & Language Adaptability:
+   - If visitor preferences (travel style, name) are provided in context, seamlessly infuse that perspective (e.g., culinary focus for Foodies, architectural lore for Heritage lovers, transit hacks for Budget travelers) directly into the advice without any greeting or opening address.
+   - If Hindi is requested, respond in authentic, expressive Hindi (Devanagari script) with accurate landmark and metro names. Start directly with the information without greeting words (do NOT start with 'नमस्ते', 'नमस्कार', or 'हेलो').
+6. Clean Formatting & Source Attribution:
+   - Format with clean Markdown using bold key facts for effortless reading.
+   - Conclude your response with a concise `[Sources & Grounding]` line identifying the verified guidebook sections or live web sources used, so the companion UI can extract the source badge."""
+
+
+def strip_leading_greetings(text: str, user_name: str | None = None) -> str:
+    """
+    Defensive safety net: strips any accidental leading greeting, pleasantry, or opening name call
+    (e.g., 'Hello!', 'Hello Saif,', 'Hi Saif!', 'Namaste!', 'Hey there,', 'नमस्ते')
+    so responses always jump straight to the substantive point.
+    """
+    if not text:
+        return text
+
+    cleaned = text.strip()
+
+    # Build optional name component if user_name is known
+    name_clause = ""
+    if user_name and user_name.strip() and user_name.lower() not in ("tourist", "u", ""):
+        name_clause = rf"(?:\s+{re.escape(user_name.strip())})?"
+
+    greeting_pattern = re.compile(
+        rf"^(?:(?:\*{{1,2}}|_{{1,2}})\s*)?(?:Hello|Hi|Hey|Greetings|Welcome|Namaste|Pranam|Good\s+(?:morning|afternoon|evening)|नमस्ते|नमस्कार|हेलो)\b{name_clause}(?:(?:\*{{1,2}}|_{{1,2}})\s*)?[\s,\.!\-:*_]+",
+        flags=re.IGNORECASE
+    )
+
+    for _ in range(2):
+        match = greeting_pattern.match(cleaned)
+        if match:
+            cleaned = cleaned[match.end():].lstrip()
+        else:
+            break
+
+    if cleaned and cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+
+    return cleaned if cleaned else text
 
 
 IGNORE_SEARCH_DOMAINS = (
@@ -643,17 +693,20 @@ def run_agent_workflow(goal_or_place: str):
 
 def execute_gemini_generation(
     contents: str | list[types.Content],
-    enable_search: bool = False
+    enable_search: bool = False,
+    temperature: float = 0.5
 ) -> tuple[types.GenerateContentResponse, str]:
     """
     Executes content generation using MODEL_ID (gemini-3.8-flash) as default,
     with graceful fallback to FALLBACK_MODEL_ID (gemini-3.6-flash) if 3.8 fails,
     and COUNTERMEASURE_MODEL_ID (gemini-2.5-flash) if both 3.8 and 3.6 fail.
     Supports either single-turn string or multi-turn list[types.Content].
+    Response temperature is configured to 0.5 by default for human-like conversational warmth.
     """
     tools = [types.Tool(google_search=types.GoogleSearch())] if enable_search else None
     config = types.GenerateContentConfig(
         system_instruction=SYSTEM_INSTRUCTION,
+        temperature=temperature,
         tools=tools
     )
 
@@ -733,10 +786,10 @@ Verified Live Web Research Context (via TinyFish Live Web Engine):
 User Question: {query}
 Retrieval Mode: {status}
 
-Provide an accurate, secular, professional, and practical guide response. Base your facts on the verified local and live web research context:"""
+Provide an accurate, secular, professional, and practical guide response. Do NOT include any greeting or pleasantry (strictly forbid "Hello", "Hi", etc.)—jump immediately and directly into the answer. Base your facts on the verified local and live web research context:"""
 
             response, model_used = execute_gemini_generation(prompt, enable_search=False)
-            answer_text = response.text or ""
+            answer_text = strip_leading_greetings(response.text or "")
 
             return {
                 "answer": answer_text,
@@ -759,11 +812,11 @@ Provide an accurate, secular, professional, and practical guide response. Base y
 User Question: {query}
 Retrieval Mode: {status}
 
-Provide an accurate, secular, professional, and practical guide response:"""
+Provide an accurate, secular, professional, and practical guide response. Do NOT include any greeting or pleasantry (strictly forbid "Hello", "Hi", etc.)—jump immediately and directly into the answer:"""
 
     enable_search = status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB")
     response, model_used = execute_gemini_generation(prompt, enable_search=enable_search)
-    answer_text = response.text or ""
+    answer_text = strip_leading_greetings(response.text or "")
 
     if response.candidates and response.candidates[0].grounding_metadata:
         gm = response.candidates[0].grounding_metadata
@@ -935,7 +988,7 @@ User Profile & Personalization:
 - Visitor Name: {user_name}
 - Preferred Travel Style: {travel_style} ({style_guide})
 - Preferred Language: {user_lang} ({lang_guide})
-- Tone Directive: Naturally personalize the tone and focus to the user's travel style. Address them warmly by name if greeting."""
+- Tone & Directness Directive: Zero greetings. Strictly do NOT start with "Hello", "Hi", "{user_name}", or any pleasantry. Jump straight into the practical recommendations tailored to {user_name}'s {travel_style} travel style."""
 
         # Step 5: Build grounded prompt for the current turn
         place_label = ", ".join(p.replace("_", " ").title() for p in active_places) if active_places else "General Delhi"
@@ -951,7 +1004,7 @@ Active Target Landmark: {place_label}
 Retrieval Mode: {status}
 {personalization_instructions}
 
-Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session:"""
+Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session. Bypass any greeting or conversational pleasantry—start immediately and directly with the factual answer:"""
         else:
             grounded_turn_prompt = f"""Verified Local Guidebook Context:
 {local_context}
@@ -961,7 +1014,7 @@ Active Target Landmark: {place_label}
 Retrieval Mode: {status}
 {personalization_instructions}
 
-Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session:"""
+Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session. Bypass any greeting or conversational pleasantry—start immediately and directly with the factual answer:"""
 
         # Build multi-turn contents list for Gemini
         recent_history = self.history[-self.max_history_turns * 2:]
@@ -1019,6 +1072,9 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
         ).strip()
         if not clean_answer:
             clean_answer = answer_text
+
+        # Defensive safety net: guarantee leading greetings are removed from response & history
+        clean_answer = strip_leading_greetings(clean_answer, user_name if "user_name" in locals() else None)
 
         # Append clean exchange to session history
         self.history.append(types.Content(role="user", parts=[types.Part.from_text(text=raw_query)]))
@@ -1151,7 +1207,7 @@ Output Structure:
 Do not include backticks (```markdown ... ```) around the entire output. Return the raw Markdown starting with '# '."""
 
     try:
-        response, _ = execute_gemini_generation(structuring_prompt, enable_search=False)
+        response, _ = execute_gemini_generation(structuring_prompt, enable_search=False, temperature=0.2)
         structured_md = (response.text or "").strip()
         if structured_md.startswith("```markdown"):
             structured_md = structured_md[len("```markdown"):].strip()
@@ -1223,7 +1279,7 @@ def display_diagnostic_panel(
     console.print(f"• [bold]Routing Decision:[/bold] [{decision_style}]{decision_label}[/{decision_style}]")
     console.print(f"• [bold]Routing Rationale:[/bold] [italic]{diagnostics.get('reason', '')}[/italic]")
     console.print(f"• [bold]Live Grounding Engine:[/bold] [bold green]{live_engine}[/bold green]")
-    console.print(f"• [bold]Active Model:[/bold] [green]{model_used}[/green]")
+    console.print(f"• [bold]Active Model:[/bold] [green]{model_used}[/green] [dim](Temperature: 0.5)[/dim]")
 
     candidates = diagnostics.get("candidates", [])
     if candidates:

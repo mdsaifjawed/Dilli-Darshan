@@ -89,6 +89,8 @@ def run_verification():
     # Check HTML tags presence
     assert "<strong>" in chat_data1["answer"] or "<div>" in chat_data1["answer"], "HTML formatting missing from answer"
     assert chat_data1.get("source"), "Source badge string missing"
+    assert not chat_data1["answer"].lower().startswith("hello"), "Turn 1 starts with 'Hello'!"
+    assert not chat_data1.get("raw_markdown", "").lower().startswith("hello"), "Turn 1 raw markdown starts with 'Hello'!"
 
     # 5. Task 2 & 3: Chat Turn 2 (Contextual Follow-up: "Which metro gate is closest to reach there?")
     print("\n[Step 5] Testing POST /chat Turn 2 (Multi-turn memory: 'Which metro gate is closest to reach there?')...")
@@ -110,11 +112,13 @@ def run_verification():
     print(f"  • Turn Number: {chat_data2.get('turn_number')}")
     print(f"  • Answer Content:\n{chat_data2.get('answer')}")
 
-    # Verify context retention of Red Fort
+    # Verify context retention of Red Fort and absence of greeting in Turn 2
+    assert not chat_data2["answer"].lower().startswith("hello"), "Turn 2 starts with 'Hello'!"
+    assert not chat_data2.get("raw_markdown", "").lower().startswith("hello"), "Turn 2 raw markdown starts with 'Hello'!"
     t2_text = chat_data2["answer"].lower() + chat_data2.get("raw_markdown", "").lower()
     has_red_fort = ("red fort" in t2_text) or ("lal qila" in t2_text) or ("gate" in t2_text)
     assert has_red_fort, "Turn 2 failed to inherit active monument (Red Fort) from Turn 1!"
-    print("✓ Multi-Turn Context Verified: Bot correctly understood 'there' refers to Red Fort!")
+    print("✓ Multi-Turn Context Verified: Bot correctly understood 'there' refers to Red Fort without greeting prefix!")
 
     # 6. Task 2: Language Personalization (Hindi response)
     print("\n[Step 6] Testing Personalization with Hindi Language...")

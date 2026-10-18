@@ -267,9 +267,8 @@ def submit_question(req: ChatRequest) -> dict[str, Any]:
     if clean_q in ("reset", "new", "/new", "resetchat", "/resetchat", "clear"):
         chat_session.reset_session()
         reset_greeting = (
-            f"Namaste <strong>{html.escape(effective_name)}</strong>! "
-            f"Your conversational session has been refreshed. "
-            f"I am ready with recommendations for <em>{html.escape(effective_style)}</em> in <em>{html.escape(effective_lang)}</em>. "
+            f"Conversational session refreshed for <strong>{html.escape(effective_name)}</strong>. "
+            f"Ready with recommendations for <em>{html.escape(effective_style)}</em> in <em>{html.escape(effective_lang)}</em>. "
             f"Where would you like to go next?"
         )
         return {
