@@ -1,4 +1,4 @@
-# 🏛️ DilliDarshan AI (DilliGuide)
+# 🏛️ DilliDarshan
 ### *Next-Generation RAG & Autonomous Live Tour Companion for New Delhi*
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
@@ -44,7 +44,7 @@
 
 ## 📖 Overview
 
-**DilliDarshan AI** (also known as **DilliGuide**) is an enterprise-grade, domain-specialized conversational AI and tourism intelligence platform built specifically for the National Capital Territory of Delhi, India.
+**DilliDarshan AI** is an enterprise-grade, domain-specialized conversational AI and tourism intelligence platform built specifically for the National Capital Territory of Delhi, India.
 
 Traditional travel bots either hallucinate outdated monument timings and ticket prices or provide generic Wikipedia summaries. **DilliDarshan AI** solves this with a **Hybrid Corrective RAG (Retrieval-Augmented Generation)** architecture:
 
