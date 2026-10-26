@@ -1,7 +1,7 @@
 """
 api.py - FastAPI Backend for Dilli Darshan AI
-Integrates RAG vector retrieval (ChromaDB), Live Web Search (TinyFish/Gemini Grounding),
-Multi-turn conversational memory, SQLite user profiles, and serves the companion frontend.
+Integrates Vectorize Hindsight Cloud as the unified Agent Memory & User Profile store,
+ChromaDB local vector RAG, TinyFish live web search, and serves the companion frontend.
 """
 
 import os
@@ -16,14 +16,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-import database
+import memory
 import retrieval
 import embedding
 
 app = FastAPI(
     title="DilliDarshan AI Backend",
-    description="Intelligent RAG & Live Tour Companion API for Delhi Tourism",
-    version="2.0.0"
+    description="Intelligent RAG & Live Tour Companion API for Delhi Tourism powered by Hindsight Cloud",
+    version="2.1.0"
 )
 
 # Enable CORS for browser frontend connectivity
@@ -37,18 +37,20 @@ app.add_middleware(
 
 # In-memory store for stateful multi-turn user chat sessions
 USER_SESSIONS: dict[str, retrieval.DilliDarshanChatSession] = {}
+SESSIONS = USER_SESSIONS
 
 
 # ==============================================================================
 # Markdown-to-HTML Formatter for Frontend (.bubble div)
 # ==============================================================================
-def format_markdown_for_frontend_html(
+def markdown_to_clean_html(
     md_text: str,
     default_source: str = "Delhi Tourism Official Archives"
 ) -> tuple[str, str]:
     """
     Transforms Gemini's Markdown output into clean, beautifully styled HTML
-    for direct insertion into the frontend's bubble.innerHTML div.
+    for direct insertion into the frontend's bubble.innerHTML div without requiring
+    an external browser markdown parser.
     Also extracts a clean, concise source string for the .source-badge pill.
     """
     if not md_text:
@@ -93,6 +95,8 @@ def format_markdown_for_frontend_html(
 
     def format_inline_tokens(text: str) -> str:
         """Converts bold, italic, code, and links to inline styled HTML."""
+        # Escape raw HTML characters (e.g. '<', '>') first so expressions like "Children < 15" don't break HTML parsing
+        text = html.escape(text, quote=False)
         # Bold: **text** or __text__
         text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
         text = re.sub(r"__(.+?)__", r"<strong>\1</strong>", text)
@@ -129,7 +133,7 @@ def format_markdown_for_frontend_html(
             if level == 1:
                 html_parts.append(f'<h3 style="margin: 12px 0 6px; color: #fcd34d; font-weight: 700; font-size: 1.15rem;">{heading_content}</h3>')
             elif level == 2:
-                html_parts.append(f'<h4 style="margin: 10px 0 4px; color: #fcd34d; font-weight: 700; font-size: 1.05rem;">{heading_content}</h4>')
+                html_parts.append(f'<h4 style="color:#fcd34d; margin:10px 0 4px; font-weight: 700; font-size: 1.05rem;">{heading_content}</h4>')
             else:
                 html_parts.append(f'<h5 style="margin: 8px 0 4px; color: #fcd34d; font-weight: 600; font-size: 0.98rem;">{heading_content}</h5>')
             continue
@@ -141,200 +145,181 @@ def format_markdown_for_frontend_html(
                 html_parts.append("</ol>")
                 in_ol = False
             if not in_ul:
-                html_parts.append('<ul style="margin: 6px 0 8px 20px; padding-left: 0; line-height: 1.55;">')
+                html_parts.append('<ul style="margin: 8px 0 8px 18px; padding-left: 0; line-height: 1.55;">')
                 in_ul = True
             item_body = format_inline_tokens(ul_match.group(1).strip())
             html_parts.append(f'<li style="margin-bottom: 5px;">{item_body}</li>')
             continue
 
         # Numbered list items: 1. item
-        ol_match = re.match(r"^\d+\.\s+(.+)$", stripped)
+        ol_match = re.match(r"^(\d+)\.\s+(.+)$", stripped)
         if ol_match:
             if in_ul:
                 html_parts.append("</ul>")
                 in_ul = False
             if not in_ol:
-                html_parts.append('<ol style="margin: 6px 0 8px 22px; padding-left: 0; line-height: 1.55;">')
+                html_parts.append('<ol style="margin: 8px 0 8px 18px; padding-left: 0; line-height: 1.55;">')
                 in_ol = True
-            item_body = format_inline_tokens(ol_match.group(1).strip())
+            item_body = format_inline_tokens(ol_match.group(2).strip())
             html_parts.append(f'<li style="margin-bottom: 5px;">{item_body}</li>')
             continue
 
-        # Regular text paragraph line
-        html_parts.append(close_open_lists())
-        line_body = format_inline_tokens(stripped)
-        html_parts.append(f'<div style="margin: 4px 0;">{line_body}</div>')
+        # Regular text paragraph
+        closed = close_open_lists()
+        if closed:
+            html_parts.append(closed)
+        formatted_p = format_inline_tokens(stripped)
+        html_parts.append(f'<p style="margin-bottom: 8px; line-height: 1.6;">{formatted_p}</p>')
 
-    # Close any trailing lists
-    html_parts.append(close_open_lists())
-    final_html = "".join(html_parts).strip()
-    return final_html, source_label
+    closed = close_open_lists()
+    if closed:
+        html_parts.append(closed)
+
+    result_html = "".join(html_parts)
+    return result_html, source_label
+
+
+# Backward-compatible alias
+format_markdown_for_frontend_html = markdown_to_clean_html
 
 
 # ==============================================================================
-# Pydantic Schemas Matching Frontend Exactly
+# Request & Response Schemas
 # ==============================================================================
 class ProfileRequest(BaseModel):
-    name: str = Field(..., description="Full name or alias of the tourist")
-    email: str = Field(..., description="Unique email address or identifier")
-    travel_style: str = Field("Heritage & History", description="Preferred travel style")
-    language: str = Field("English", description="Preferred language (English or Hindi)")
+    name: str = Field(..., example="Saif")
+    email: str = Field(..., example="saif@delhi.com")
+    travel_style: str = Field(default="Heritage & History", example="Food & Street Markets")
+    language: str = Field(default="English", example="English")
 
 
 class ChatRequest(BaseModel):
-    query: str = Field(..., description="Question from the user")
-    user_id: Optional[int] = Field(None, description="Registered user ID from SQLite")
-    user_name: Optional[str] = Field("Tourist", description="Tourist name")
-    travel_style: Optional[str] = Field("Heritage & History", description="Travel style preference")
-    language: Optional[str] = Field("English", description="Response language")
-    session_id: Optional[str] = Field(None, description="Optional custom session key")
+    query: str = Field(..., example="What are the timings and ticket prices for Red Fort?")
+    user_id: Optional[int] = Field(default=None, example=46682837)
+    user_name: Optional[str] = Field(default="Tourist", example="Saif")
+    travel_style: Optional[str] = Field(default="Heritage & History", example="Food & Street Markets")
+    language: Optional[str] = Field(default="English", example="English")
 
 
 class ResetRequest(BaseModel):
-    session_id: Optional[str] = None
-    user_id: Optional[int] = None
+    user_id: Optional[int] = Field(default=None)
+    session_id: Optional[str] = Field(default=None)
 
 
 # ==============================================================================
-# Endpoint 1: POST /user/profile (Matches saveProfile() in index.html)
+# API Endpoints
 # ==============================================================================
+
+# Endpoint 1: POST /user/profile (Stores Login Info Directly in Hindsight Cloud)
 @app.post("/user/profile")
-def save_profile(req: ProfileRequest) -> dict[str, Any]:
+def save_user_profile(req: ProfileRequest) -> dict[str, Any]:
     """
-    Saves or updates tourist profile in SQLite users.db.
-    Matches frontend saveProfile() fetch contract.
+    Saves user login profile directly to Hindsight Cloud.
+    Maps email to deterministic integer user_id and bank_id = f"dilli_darshan_tourist_{user_id}".
     """
-    user = database.upsert_user_profile(
-        name=req.name,
-        email=req.email,
+    clean_name = req.name.strip()
+    clean_email = req.email.strip()
+    if not clean_email:
+        raise HTTPException(status_code=400, detail="Valid email address is required")
+
+    result = memory.save_user_login_to_hindsight(
+        name=clean_name or "Tourist",
+        email=clean_email,
         travel_style=req.travel_style,
         language=req.language
     )
+
     return {
         "status": "success",
-        "user_id": user["user_id"],
-        "name": user["name"],
-        "email": user["email"],
-        "travel_style": user["travel_style"],
-        "language": user["language"]
+        "user_id": result["user_id"],
+        "bank_id": result["bank_id"],
+        "name": result["name"],
+        "email": result["email"],
+        "travel_style": result["travel_style"],
+        "language": result["language"]
     }
 
 
-# ==============================================================================
-# Endpoint 2: POST /chat (Matches submitQuestion() in index.html)
-# ==============================================================================
+# Endpoint 2: POST /chat (Hindsight Cloud Recall + ChromaDB/TinyFish RAG + Hindsight Retain)
 @app.post("/chat")
-def submit_question(req: ChatRequest) -> dict[str, Any]:
+def chat_turn(req: ChatRequest) -> dict[str, Any]:
     """
-    Stateful conversational chat endpoint:
-    - Retains multi-turn conversation memory per user / session.
-    - Personalizes response based on travel style and language.
-    - Formats output as clean HTML for direct innerHTML rendering in index.html.
-    - Returns concise source label for the .source-badge element.
-    - Logs turn in SQLite chat_logs table.
+    Orchestrates the full intelligent multi-turn turn:
+    1. Looks up or creates user session in memory.
+    2. Recalls memories & preferences from Hindsight Cloud.
+    3. Resolves contextual query & place inheritance.
+    4. Retrieves local ChromaDB chunks & TinyFish live web context.
+    5. Generates local insider answer via Gemini.
+    6. Asynchronously retains turn & extracted preferences in Hindsight Cloud.
+    7. Converts Markdown to styled HTML for direct insertion into bubble.innerHTML.
     """
-    # 1. Fallback verification against saved SQLite profile if user_id is provided
-    effective_name = req.user_name or "Tourist"
-    effective_style = req.travel_style or "Heritage & History"
-    effective_lang = req.language or "English"
+    clean_query = req.query.strip()
+    if not clean_query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
 
-    if req.user_id:
-        saved_user = database.get_user_by_id(req.user_id)
-        if saved_user:
-            if not req.user_name or req.user_name.lower() in ("tourist", "u", ""):
-                effective_name = saved_user["name"]
-            if not req.travel_style:
-                effective_style = saved_user["travel_style"]
-            if not req.language:
-                effective_lang = saved_user["language"]
+    session_key = (
+        f"user_{req.user_id}"
+        if req.user_id
+        else f"guest_{(req.user_name or 'tourist').lower().replace(' ', '_')}"
+    )
 
-    # 2. Determine session key
-    if req.session_id:
-        session_key = req.session_id
-    elif req.user_id:
-        session_key = f"user_{req.user_id}"
-    else:
-        clean_guest = re.sub(r"\W+", "_", (effective_name or "tourist").lower()).strip("_")
-        session_key = f"guest_{clean_guest or 'tourist'}"
+    if session_key not in SESSIONS:
+        SESSIONS[session_key] = retrieval.DilliDarshanChatSession(max_history_turns=10)
 
-    # 3. Retrieve or create multi-turn chat session
-    if session_key not in USER_SESSIONS:
-        USER_SESSIONS[session_key] = retrieval.DilliDarshanChatSession(max_history_turns=10)
-    chat_session = USER_SESSIONS[session_key]
+    session = SESSIONS[session_key]
 
-    # 4. Handle session reset triggers
-    clean_q = req.query.strip().lower()
-    if clean_q in ("reset", "new", "/new", "resetchat", "/resetchat", "clear"):
-        chat_session.reset_session()
-        reset_greeting = (
-            f"Conversational session refreshed for <strong>{html.escape(effective_name)}</strong>. "
-            f"Ready with recommendations for <em>{html.escape(effective_style)}</em> in <em>{html.escape(effective_lang)}</em>. "
-            f"Where would you like to go next?"
+    try:
+        result = session.send_message(
+            raw_query=clean_query,
+            user_id=req.user_id,
+            user_name=req.user_name or "Tourist",
+            travel_style=req.travel_style or "Heritage & History",
+            language=req.language or "English"
         )
-        return {
-            "answer": reset_greeting,
-            "raw_markdown": reset_greeting,
-            "source": "DilliDarshan Session Manager",
-            "routing_status": "SESSION_RESET",
-            "active_places": [],
-            "turn_number": 0,
-            "session_id": session_key
-        }
-
-    # 5. Execute retrieval & multi-turn generation with personalization
-    user_context = {
-        "user_name": effective_name,
-        "travel_style": effective_style,
-        "language": effective_lang
-    }
-    result = chat_session.send_message(req.query, user_context=user_context)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Chat generation encountered an error: {str(e)}"
+        )
 
     raw_markdown = result.get("answer", "")
-    base_source = result.get("source") or "Delhi Tourism Digital Desk"
+    default_source = result.get("source") or "Delhi Tourism Official Archives"
 
-    # Format into clean HTML for the frontend bubble
-    formatted_html, final_source = format_markdown_for_frontend_html(raw_markdown, default_source=base_source)
+    clean_html, extracted_source = markdown_to_clean_html(
+        raw_markdown,
+        default_source=default_source
+    )
 
-    routing_status = result.get("status", "LOCAL_HIT")
-    active_places = result.get("active_places", [])
-    turn_number = result.get("turn_number", 1)
+    final_source = result.get("source") or extracted_source
 
-    # 6. Log interaction in SQLite database
-    try:
-        database.log_chat_interaction(
-            user_id=req.user_id,
-            session_key=session_key,
-            query=req.query,
-            answer=raw_markdown,
-            source=final_source,
-            routing_status=routing_status
-        )
-    except Exception as log_err:
-        print(f"[Warning] Failed to log interaction in SQLite: {log_err}")
-
-    # 7. Return JSON strictly matching frontend contract
     return {
-        "answer": formatted_html,
+        "answer": clean_html,
         "raw_markdown": raw_markdown,
         "source": final_source,
-        "routing_status": routing_status,
-        "active_places": active_places,
-        "turn_number": turn_number,
-        "session_id": session_key
+        "routing_status": result.get("status", "LOCAL_HIT"),
+        "active_places": result.get("active_places", []),
+        "hindsight_bank_id": result.get("hindsight_bank_id", ""),
+        "memories_recalled_count": result.get("memories_recalled_count", 0),
+        "memories_recalled": result.get("memories_recalled", []),
+        "model_used": result.get("model_used", ""),
+        "is_followup": result.get("is_followup", False),
+        "effective_query": result.get("effective_query", clean_query)
     }
 
 
-# ==============================================================================
-# Additional Endpoints: Health, Profile Lookup, Session Reset
-# ==============================================================================
+# Endpoint 3: GET /health & GET /api/health
 @app.get("/health")
 @app.get("/api/health")
 def health_status() -> dict[str, Any]:
-    """Returns real-time status of ChromaDB, Gemini LLM, SQLite DB, and Sessions."""
+    """
+    Returns server operational health, ChromaDB chunk count, active Gemini key/model,
+    and Hindsight Cloud connection status.
+    """
+    chroma_count = 0
     try:
         chroma_count = embedding.collection.count()
     except Exception:
-        chroma_count = 504
+        pass
 
     return {
         "status": "healthy",
@@ -342,27 +327,57 @@ def health_status() -> dict[str, Any]:
         "chromadb_chunks": chroma_count,
         "active_model": retrieval.MODEL_ID,
         "gemini_key_active": bool(getattr(embedding.client, "active_key", True)),
-        "registered_users": database.get_users_count(),
-        "logged_chat_turns": database.get_chat_logs_count(),
-        "active_sessions": len(USER_SESSIONS)
+        "hindsight_cloud": {
+            "base_url": memory.hindsight_base_url,
+            "api_key_configured": bool(memory.hindsight_api_key),
+            "client_connected": memory.client is not None
+        },
+        "active_sessions": len(SESSIONS)
     }
 
 
+# Endpoint 4: GET /user/memories/{user_id}
+@app.get("/user/memories/{user_id}")
+def inspect_user_memories(user_id: int) -> dict[str, Any]:
+    """
+    Calls Hindsight Cloud recall for bank_id = f"dilli_darshan_tourist_{user_id}"
+    so developers and tourists can inspect everything Hindsight Cloud has learned.
+    """
+    bank_id = memory.get_bank_id_for_user(user_id)
+    recalled = memory.recall_user_memories(
+        user_id=user_id,
+        query="all user profile, preferences, visited places, accessibility and past conversation"
+    )
+    return {
+        "user_id": user_id,
+        "bank_id": bank_id,
+        "memories": recalled.get("memories", []),
+        "formatted_context": recalled.get("formatted_memory_context", "")
+    }
+
+
+# Endpoint 5: GET /user/profile/{user_id}
 @app.get("/user/profile/{user_id}")
 def get_user_profile(user_id: int) -> dict[str, Any]:
-    """Fetches user profile by ID from SQLite users.db."""
-    profile = database.get_user_by_id(user_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
-    return profile
+    """Fetches user profile by ID from memory store or Hindsight Cloud."""
+    if user_id in memory.IN_MEMORY_PROFILES:
+        return memory.IN_MEMORY_PROFILES[user_id]
+    bank_id = memory.get_bank_id_for_user(user_id)
+    recalled = memory.recall_user_memories(user_id=user_id, query="User login profile registration")
+    return {
+        "user_id": user_id,
+        "bank_id": bank_id,
+        "memories": recalled.get("memories", [])
+    }
 
 
+# Endpoint 6: POST /chat/reset
 @app.post("/chat/reset")
 def reset_user_session(req: ResetRequest) -> dict[str, Any]:
     """Explicitly resets a user's multi-turn session."""
     key = req.session_id or (f"user_{req.user_id}" if req.user_id else None)
-    if key and key in USER_SESSIONS:
-        USER_SESSIONS[key].reset_session()
+    if key and key in SESSIONS:
+        SESSIONS[key].reset_session()
         return {"status": "success", "message": f"Session '{key}' successfully reset"}
     return {"status": "success", "message": "No active session in memory to reset"}
 
@@ -384,24 +399,28 @@ for candidate in POSSIBLE_FRONTEND_DIRS:
         FRONTEND_DIR = candidate
         break
 
-if FRONTEND_DIR:
+# Mount /assets if assets folder exists
+assets_dir = Path(__file__).parent / "assets"
+if not assets_dir.exists() and FRONTEND_DIR:
     assets_dir = FRONTEND_DIR / "assets"
-    if assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+if assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
-    @app.get("/")
-    @app.get("/index.html")
-    def serve_frontend_page():
-        """Serves Dilli-Darshan/index.html so opening http://127.0.0.1:8000 loads the full companion."""
+workspace_frontend = Path(__file__).parent / "frontend.html"
+
+@app.get("/")
+@app.get("/index.html")
+def serve_frontend_page():
+    """Serves frontend single-page companion app."""
+    if FRONTEND_DIR and (FRONTEND_DIR / "index.html").exists():
         return FileResponse(str(FRONTEND_DIR / "index.html"), media_type="text/html")
-else:
-    @app.get("/")
-    def serve_api_root():
-        return {
-            "service": "DilliDarshan AI Backend",
-            "documentation": "/docs",
-            "health": "/health"
-        }
+    if workspace_frontend.exists():
+        return FileResponse(str(workspace_frontend), media_type="text/html")
+    return {
+        "service": "DilliDarshan AI Backend",
+        "documentation": "/docs",
+        "health": "/health"
+    }
 
 
 # ==============================================================================

@@ -26,7 +26,7 @@
   - [5. Self-Learning Auto-Caching Engine](#5-self-learning-auto-caching-engine)
   - [6. Multi-Turn Conversational Memory & Place Inheritance](#6-multi-turn-conversational-memory--place-inheritance)
   - [7. Personality, Travel Styles & Zero-Greeting Directness](#7-personality-travel-styles--zero-greeting-directness)
-- [Database Schema (SQLite Persistence)](#-database-schema-sqlite-persistence)
+- [Unified Agent Memory & User Profiles (Hindsight Cloud)](#-unified-agent-memory--user-profiles-hindsight-cloud)
 - [FastAPI REST API Reference](#-fastapi-rest-api-reference)
 - [Frontend Companion UI](#-frontend-companion-ui)
 - [Installation & Setup](#-installation--setup)
@@ -52,7 +52,7 @@ Traditional travel bots either hallucinate outdated monument timings and ticket 
 2. **Autonomous Web Fallback & Live Research**: Integrates the **TinyFish Python SDK** to autonomously search the web and scrape live Markdown when real-time events (weather, crowd, metro closures, current exhibitions) or unknown landmarks are queried.
 3. **Self-Learning Auto-Cache**: Automatically structures web discoveries into standardized 5-section guidebooks and caches them into `ChromaDB` for instant zero-latency retrieval in subsequent queries.
 4. **Stateful Conversational Memory**: Understands contextual follow-ups ("*Which metro gate is closest to reach there?*") by dynamically inheriting active landmarks.
-5. **Personalization & SQLite Persistence**: Customizes tone, recommendations, and language (English / Hindi) based on user travel personas (*Heritage & History*, *Food & Bazaars*, *Budget & Transit*, *Family Leisure*).
+5. **Unified Agent Memory & User Profiles (Hindsight Cloud)**: Integrates **Vectorize Hindsight Cloud** (`hindsight-client`) for long-term memory banks (`dilli_darshan_tourist_{id}`). Dynamically tracks user travel personas (*Heritage & History*, *Food & Bazaars*, *Budget & Transit*, *Family Leisure*), learned dietary restrictions (e.g., strict vegetarian), accessibility constraints (e.g., knee injury / stair avoidance), and visited monuments across sessions with zero local database footprint.
 
 ---
 
@@ -124,10 +124,11 @@ The following diagram illustrates the complete end-to-end data pipeline from use
                                        │                      │
                                        ▼                      ▼
                       ┌─────────────────────────┐   ┌───────────────────────────┐
-                      │  SQLite users.db Audit  │   │ Self-Learning Auto-Cache  │
-                      │  - Saves chat_logs      │   │ - Synthesizes 5-sec Guide │
-                      │  - Updates profile      │   │ - Ingests new data/*.md   │
-                      └─────────────────────────┘   └───────────────────────────┘
+                      │  Vectorize Hindsight    │   │ Self-Learning Auto-Cache  │
+                      │  Cloud Memory Bank      │   │ - Synthesizes 5-sec Guide │
+                      │  - Persistent Profile   │   │ - Ingests new data/*.md   │
+                      │  - Async Preferences    │   └───────────────────────────┘
+                      └─────────────────────────┘
 ```
 
 ---
@@ -173,11 +174,11 @@ d:\Dilli Darshan backend/
 ├── embedding.py            # ChromaDB client, Gemini Embeddings, Resilient Key Manager & TinyFish client
 ├── ingesting.py            # Batch document ingestion pipeline & autonomous CLI place discovery
 ├── retrieval.py            # Core RAG engine: Two-Tier retrieval, Decision Gate, TinyFish & ChatSession
-├── database.py             # SQLite persistence: user profiles and multi-turn chat audit logs
+├── memory.py               # Vectorize Hindsight Cloud: unified Agent Memory & User Profile engine
 ├── verify_backend.py       # Comprehensive automated integration test suite
 │
 ├── frontend.html           # Full-featured Single-Page Application (SPA) companion frontend
-├── requirements.txt        # Python dependency declarations
+├── requirements.txt        # Python dependency declarations (including hindsight-client)
 ├── places.txt              # Summary catalog of pre-indexed Delhi monuments and chunk distributions
 ├── LICENSE                 # MIT License (Copyright 2026 MD SAIF JAWED)
 │
@@ -190,11 +191,9 @@ d:\Dilli Darshan backend/
 ├── chroma_db/              # Persistent ChromaDB vector database directory
 │   └── chroma.sqlite3      # Vector storage, embeddings & HNSW cosine index
 │
-├── data/                   # Raw documents, monument PDFs, and auto-cached Markdown guides
-│   ├── Cannaught place.pdf
-│   └── Humayun's Tomb.pdf
-│
-└── users.db                # SQLite database storing users, preferences, and chat interaction logs
+└── data/                   # Raw documents, monument PDFs, and auto-cached Markdown guides
+    ├── Cannaught place.pdf
+    └── Humayun's Tomb.pdf
 ```
 
 ---
@@ -314,37 +313,25 @@ Whenever `WEB_FALLBACK` triggers for an unrecognized Delhi landmark:
 
 ---
 
-## 🗄 Database Schema (SQLite Persistence)
+## 🧠 Unified Agent Memory & User Profiles (Hindsight Cloud)
 
-All user accounts, preferences, and interaction histories are persisted in `users.db` using WAL mode (`PRAGMA journal_mode = WAL;`) for high concurrency:
+All tourist accounts, travel personas, accessibility needs, and implicit preferences are stored directly in **Vectorize Hindsight Cloud** (`https://api.hindsight.vectorize.io`). There is **no local SQLite database** and **no local Docker container required**.
 
-```sql
--- 1. Tourist Profiles
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    travel_style TEXT DEFAULT 'Heritage & History',
-    language TEXT DEFAULT 'English',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Index for case-insensitive email lookups
-CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
-
--- 2. Audit Trail & Chat History
-CREATE TABLE IF NOT EXISTS chat_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    session_key TEXT,
-    query TEXT NOT NULL,
-    answer TEXT NOT NULL,
-    source TEXT,
-    routing_status TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+### How Hindsight Cloud Memory Works:
+1. **Deterministic User ID & Bank Mapping**:
+   The frontend expects an integer `user_id` from `POST /user/profile`. We derive this deterministically via CRC32:
+   ```python
+   user_id = abs(zlib.crc32(email.strip().lower().encode("utf-8"))) % 100000000 + 1
+   bank_id = f"dilli_darshan_tourist_{user_id}"
+   ```
+2. **Dedicated Cloud Memory Bank**:
+   Every tourist receives a dedicated memory bank on Hindsight Cloud configured with an empathic, guide-specific mission:
+   - `disposition`: `{"skepticism": 2, "literalism": 4, "empathy": 5}`
+   - `mission`: Tracks login identity, dietary preferences, mobility/accessibility constraints, budget, and visited Delhi monuments.
+3. **Multi-Turn Recall & Injection**:
+   On every turn, `memory.recall_user_memories(user_id, query)` pulls the tourist's profile and implicit context (e.g., knee injury, vegetarianism) from Hindsight Cloud and injects it into the Gemini generation prompt.
+4. **Asynchronous Retention (`retain_async=True`)**:
+   After the response is generated, `memory.retain_chat_turn(...)` asynchronously extracts and commits newly mentioned preferences into Hindsight Cloud in the background with zero added latency.
 
 ---
 
@@ -354,7 +341,7 @@ The backend exposes a clean REST API built with FastAPI:
 
 ### 1. Save or Update User Profile
 - **Endpoint**: `POST /user/profile`
-- **Description**: Creates or updates a tourist profile in SQLite.
+- **Description**: Registers or updates a tourist profile directly in Hindsight Cloud.
 
 **Request Payload:**
 ```json
@@ -370,7 +357,8 @@ The backend exposes a clean REST API built with FastAPI:
 ```json
 {
   "status": "success",
-  "user_id": 1,
+  "user_id": 7419175,
+  "bank_id": "dilli_darshan_tourist_7419175",
   "name": "Saif Jawed",
   "email": "saif@example.com",
   "travel_style": "Heritage & History",
@@ -382,30 +370,47 @@ The backend exposes a clean REST API built with FastAPI:
 
 ### 2. Conversational Chat
 - **Endpoint**: `POST /chat`
-- **Description**: Submits a query to the stateful RAG pipeline.
+- **Description**: Submits a query to the stateful RAG pipeline with Hindsight Cloud memory recall and async retention.
 
 **Request Payload:**
 ```json
 {
   "query": "What are the timings and entry fee for Red Fort?",
-  "user_id": 1,
+  "user_id": 7419175,
   "user_name": "Saif Jawed",
   "travel_style": "Heritage & History",
-  "language": "English",
-  "session_id": "user_1"
+  "language": "English"
 }
 ```
 
 **Response (200 OK):**
 ```json
 {
-  "answer": "<div><strong>Red Fort (Lal Qila)</strong> is open from <strong>9:30 AM to 4:30 PM</strong>, Tuesday through Sunday (closed on Mondays)...</div>",
+  "answer": "<p style=\"margin-bottom: 8px; line-height: 1.6;\"><strong>Red Fort (Lal Qila)</strong> is open from <strong>9:30 AM to 4:30 PM</strong>, Tuesday through Sunday...</p>",
   "raw_markdown": "**Red Fort (Lal Qila)** is open from **9:30 AM to 4:30 PM**...",
-  "source": "Lal Qila Archives (ChromaDB)",
+  "source": "Lal Qila Archives (ChromaDB) + Hindsight Cloud Memory",
   "routing_status": "LOCAL_HIT",
   "active_places": ["lal_qila"],
-  "turn_number": 1,
-  "session_id": "user_1"
+  "hindsight_bank_id": "dilli_darshan_tourist_7419175",
+  "memories_recalled_count": 3
+}
+```
+
+---
+
+### 3. Inspect Hindsight Cloud Memories
+- **Endpoint**: `GET /user/memories/{user_id}`
+- **Description**: Retrieves all facts and preferences that Hindsight Cloud has learned about the tourist.
+
+**Response (200 OK):**
+```json
+{
+  "bank_id": "dilli_darshan_tourist_7419175",
+  "memories": [
+    "Saif Jawed is strictly vegetarian and has a knee injury.",
+    "Saif Jawed prefers Heritage & History travel style and English language."
+  ],
+  "formatted_memory_context": "- Saif Jawed is strictly vegetarian and has a knee injury.\n- Saif Jawed prefers Heritage & History travel style and English language."
 }
 ```
 
@@ -588,19 +593,19 @@ python ingesting.py --clear
 ---
 
 ### 4. Automated Backend & Frontend Verification Suite
-Run the automated test suite to verify all endpoints, multi-turn place inheritance, HTML formatting, and SQLite persistence:
+Run the automated test suite to verify all endpoints, Hindsight Cloud memory banks, multi-turn place inheritance, and HTML formatting:
 ```bash
 python verify_backend.py
 ```
 *Test suite validates:*
-- `GET /health` diagnostics
+- `GET /health` diagnostics (ChromaDB + Hindsight Cloud status)
 - `GET /` companion page serving
-- `POST /user/profile` upsert and case-insensitive SQLite index
-- `POST /chat` Turn 1 (Red Fort timings & tickets)
-- `POST /chat` Turn 2 (Pronoun context retention: "*Which metro gate is closest to reach there?*")
-- Multi-lingual Hindi response generation
+- `POST /user/profile` directly to Vectorize Hindsight Cloud
+- `POST /chat` Turn 1 (Jama Masjid with accessibility/dietary constraints)
+- `POST /chat` Turn 2 (Pronoun context retention: "*What are the timings there and where should I eat nearby?*")
+- Multi-turn Hindsight Cloud memory recall (vegetarian recommendations)
+- `GET /user/memories/{user_id}` bank memory inspection
 - `POST /chat/reset` session management
-- SQLite `chat_logs` audit trail entries
 
 ---
 
@@ -612,6 +617,8 @@ python verify_backend.py
 | `API_Key_B1` | First Failover Key (activated on 429 quota exhaustion) | No | `AIzaSy...` |
 | `API_Key_B2` | Second Failover Key (activated if B1 fails) | No | `AIzaSy...` |
 | `Tinyfish_API` | TinyFish API key for live web search and browser agent | No | `tf_live_...` |
+| `HINDSIGHT_API_KEY` | Vectorize Hindsight Cloud API Key for user memory | **Yes** | `hsk_de8d...` |
+| `HINDSIGHT_API_URL` | Hindsight Cloud API Base URL | No | `https://api.hindsight.vectorize.io` |
 
 ---
 
@@ -619,12 +626,12 @@ python verify_backend.py
 
 - **Core Language**: Python 3.10+
 - **Web API Framework**: FastAPI, Uvicorn, Pydantic v2
+- **Agent Memory & User Profiles**: Vectorize Hindsight Cloud (`hindsight-client`)
 - **Vector Database**: ChromaDB (Cosine similarity / HNSW index)
 - **Large Language Models**: Google Gemini 3.8 Flash, 3.6 Flash, 2.5 Flash (`google-genai` SDK)
 - **Embedding Models**: Google `gemini-embedding-2`
 - **Live Web Research**: TinyFish Python SDK (`tinyfish`)
 - **Document Processing**: `pymupdf4llm`, `langchain-text-splitters`
-- **Relational Storage**: SQLite3 (with WAL mode & foreign keys)
 - **Terminal UI**: Rich (Color formatting, Tables, Panels, Markdown)
 - **Companion Frontend**: Semantic HTML5, Vanilla CSS3, Modern ES6 JavaScript
 

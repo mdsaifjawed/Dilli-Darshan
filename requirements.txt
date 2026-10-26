@@ -6,3 +6,4 @@ pymupdf4llm>=1.28.0
 langchain-text-splitters>=1.0.0
 rich>=13.0.0
 tinyfish>=0.9.0
+hindsight-client>=1.0.0

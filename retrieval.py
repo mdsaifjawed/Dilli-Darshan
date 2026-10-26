@@ -22,6 +22,7 @@ load_dotenv()
 
 import embedding
 import chunking
+import memory
 from google.genai import types
 
 console = Console()
@@ -109,10 +110,10 @@ KNOWN_DELHI_PLACES = {
 
 STOP_WORDS = {
     "what", "where", "how", "when", "why", "who", "which", "is", "are", "was", "were",
-    "the", "a", "an", "in", "at", "near", "nearest", "closest", "next", "to", "for", "from",
+    "the", "a", "an", "in", "at", "near", "nearest", "closer", "closest", "next", "to", "for", "from",
     "around", "of", "and", "or", "but", "so", "with", "without", "between", "among", "along",
     "best", "good", "top", "famous", "popular", "great", "iconic", "also", "just",
-    "cafe", "cafes", "restaurant", "restaurants", "food", "dining", "eat", "eateries",
+    "cafe", "cafes", "restaurant", "restaurants", "food", "dining", "eat", "eateries", "eating",
     "metro", "station", "transit", "route", "reach", "get", "direction", "directions",
     "ticket", "tickets", "price", "prices", "cost", "fee", "fees", "entry", "fare",
     "timing", "timings", "hours", "time", "open", "closed", "closure", "schedule",
@@ -121,8 +122,11 @@ STOP_WORDS = {
     "delhi", "new delhi", "dilli", "city", "place", "places", "spot", "spots",
     # Pronouns & follow-up reference tokens
     "it", "its", "there", "this", "that", "here", "their", "them", "these", "those",
-    "his", "her", "my", "your", "our", "one", "can", "could", "would", "should", "does", "do",
-    "any", "some", "all", "much", "many", "allowed", "allow", "rule", "rules", "guideline"
+    "i", "me", "my", "myself", "we", "us", "our", "you", "your", "yours", "he", "him", "his", "she", "her",
+    "one", "can", "could", "would", "should", "does", "do", "did", "have", "has", "had",
+    "any", "some", "all", "much", "many", "allowed", "allow", "rule", "rules", "guideline",
+    "nearby", "around", "close", "local", "please", "suggest", "recommend", "recommendation",
+    "recommendations", "option", "options", "anything", "something"
 }
 
 
@@ -180,6 +184,10 @@ def extract_target_location(query: str) -> str | None:
     """
     q = re.sub(r"[\?\,\.\!\;\:\'\"]", " ", query.lower())
     q = re.sub(r"\s+", " ", q).strip()
+
+    # If the query contains pronoun references (there, it, here, etc.), it's a follow-up, not an open-ended location
+    if re.search(r"\b(it|its|there|this|that|here)\b", q):
+        return None
 
     # Preposition pattern
     prep_match = re.search(r"\b(?:in|at|near|to|for|from|around|visit|visiting|reach|about)\s+([a-zA-Z0-9\s\-]+)", q)
@@ -466,23 +474,26 @@ You are not a sterile search engine or Wikipedia scraper—you are an articulate
 
 Key Guidelines:
 1. Speak with Local Intuition: 
-   - Integrate concrete operational facts from the verified context (exact entry fees for Indians and foreigners, weekly off/closed days, visiting hours, and nearest Delhi Metro station & exit gate number).
-   - Don't just dump dry facts; weave them with insider intuition—the BEST time of day to arrive to beat queues, which specific metro gate saves a 15-minute walk, sensory details, and what to skip.
+   - Weave verified operational facts (exact DMRC metro stations & exit gate numbers, ASI entry fees for Indians and foreigners, visiting hours, and weekly off days) seamlessly with practical local intuition.
+   - Guide like an insider—the BEST time of day to arrive to beat long ticket queues or Delhi's blistering afternoon heat, which specific exit gate saves a 15-minute detour, which unauthorized e-rickshaw or guide traps to steer clear of, what signature dish to order nearby, and natural nearby next stops.
    - For dining, recommend signature dishes, vibe, and practical realities (cash-only spots, wait times, narrow alleys).
-2. Grounded Authenticity:
+2. Deep Personalization & Physical/Dietary Care (Hindsight Memory Integration):
+   - Strictly honor all remembered preferences, physical constraints, and dietary habits from Hindsight Cloud Agent Memory.
+   - If the tourist has physical constraints (e.g., knee injury, elderly, difficulty climbing steep stairs, stroller or wheelchair access), proactively advise on accessible ramps, lift options, or alternate vantage points to avoid painful climbs (e.g. at monumental minarets, steep flight of stairs at high gates).
+   - If the tourist is vegetarian, recommend iconic vegetarian spots (e.g., Haldiram's, Kake Di Hatti, Giani's, Paranthe Wali Gali) and do not steer them to non-vegetarian kebabs.
+   - Tailor recommendations directly to their declared travel style (Heritage & History, Food & Street Markets, Budget & Metro Transit, Family & Leisure).
+3. Grounded Authenticity & Secular Tone:
    - Strictly prioritize verified local guidebook context and live web details. Never invent ticket prices, timings, or transit routes.
-   - Narrate facts naturally into an engaging, cohesive experience rather than disconnected bullet dumps.
-3. Proactive Traveling Rhythm:
-   - Suggest natural next steps nearby (e.g., "Once you step out of the stepwell, you're only a 7-minute stroll from Wenger's in CP").
+   - Maintain a welcoming, inclusive, modern, and strictly secular tone. Do not use sectarian or religious greetings.
 4. ZERO GREETINGS & DIRECTNESS (CRITICAL):
    - ABSOLUTELY NO GREETINGS OR SALUTATIONS: Never begin ANY response with greetings, salutations, pleasantries, or welcomes. Strictly FORBIDDEN at the start of any response: "Hello", "Hi", "Hey", "Greetings", "Welcome", "Good morning/afternoon", "Namaste", "Pranam", "As-salamu alaykum", "Sat Sri Akaal", or their equivalents in any language (such as "नमस्ते" or "हेलो").
    - NEVER OPEN BY ADDRESSING THE VISITOR BY NAME: Do not start responses with "Hello Saif,", "Saif,", "Dear visitor,", etc.
    - JUMP STRAIGHT TO THE POINT: Begin immediately and directly with the substantive answer, core facts, and recommendations from the very first word.
    - NO CONVERSATIONAL FILLER: Avoid introductory throat-clearing such as "Certainly! Here is...", "Sure thing!", "I would be happy to help with...", or "Great question!".
    - APPLIES TO EVERY TURN: This zero-greeting, straight-to-the-point rule strictly applies across the entire conversation—the very first question, second turn, third turn, follow-ups, and all subsequent messages alike.
-5. Personalization & Language Adaptability:
-   - If visitor preferences (travel style, name) are provided in context, seamlessly infuse that perspective (e.g., culinary focus for Foodies, architectural lore for Heritage lovers, transit hacks for Budget travelers) directly into the advice without any greeting or opening address.
-   - If Hindi is requested, respond in authentic, expressive Hindi (Devanagari script) with accurate landmark and metro names. Start directly with the information without greeting words (do NOT start with 'नमस्ते', 'नमस्कार', or 'हेलो').
+5. Language Adaptability:
+   - If Hindi is requested (Preferred Language: Hindi), respond in authentic, expressive, and respectful Hindi (Devanagari script) with accurate landmark and metro names. Start directly with the information without greeting words (do NOT start with 'नमस्ते', 'नमस्कार', or 'हेलो').
+   - Otherwise, respond in natural, engaging, and professional English.
 6. Clean Formatting & Source Attribution:
    - Format with clean Markdown using bold key facts for effortless reading.
    - Conclude your response with a concise `[Sources & Grounding]` line identifying the verified guidebook sections or live web sources used, so the companion UI can extract the source badge."""
@@ -849,39 +860,66 @@ generate_dilliguide_answer = generate_dilli_darshan_answer
 class DilliDarshanChatSession:
     """
     Stateful Multi-Turn Chat Session for Dilli Darshan.
-    Maintains conversational memory (history turns), logs of prior exchanges,
-    and contextual active place tracking across follow-up queries.
+    Integrates Hindsight Cloud as the unified conversational memory and user preference engine.
+    Maintains contextual active place tracking and inherits monuments across follow-up queries.
     """
     def __init__(self, max_history_turns: int = 10):
-        self.history: list[types.Content] = []
-        self.turn_logs: list[dict] = []
+        # Conversational memory and user preferences are managed directly by Hindsight Cloud
         self.last_active_places: list[str] = []
+        self.turn_count: int = 0
         self.max_history_turns: int = max_history_turns
 
     def reset_session(self):
-        """Clears conversational history, turn logs, and active context place."""
-        self.history.clear()
-        self.turn_logs.clear()
+        """Clears active context place and resets turn counter."""
         self.last_active_places.clear()
+        self.turn_count = 0
 
-    def resolve_contextual_query(self, raw_query: str) -> tuple[str, list[str], bool]:
+    def resolve_contextual_query(
+        self,
+        raw_query: str,
+        recalled_memories: list[str] | None = None
+    ) -> tuple[str, list[str], bool]:
         """
         Determines the effective query and target places.
-        If explicit places are found, updates last_active_places.
-        If no explicit place is mentioned, but last_active_places is non-empty,
-        detects follow-up intent (pronouns, category questions) and inherits the active monument.
+        1. If explicit places are found in raw_query, updates last_active_places.
+        2. If last_active_places is empty (e.g. server restart), scans recalled
+           Hindsight Cloud memories for any known Delhi monument from KNOWN_DELHI_PLACES
+           and inherits it automatically.
+        3. If last_active_places is non-empty, detects follow-up intent (pronouns,
+           travel planning keywords) and inherits the active monument for ChromaDB.
 
         Returns:
             tuple[str, list[str], bool]: (effective_query, active_places, is_followup)
         """
         detected_places = detect_mentioned_places(raw_query)
+        corpus = get_known_corpus_places()
+        known_detected = [p for p in detected_places if p in corpus]
 
-        # 1. Explicit place(s) mentioned in current turn
-        if detected_places:
-            self.last_active_places = detected_places
-            return raw_query, detected_places, False
+        # 1. Explicit known place(s) mentioned in current turn
+        if known_detected:
+            self.last_active_places = known_detected
+            return raw_query, known_detected, False
 
-        # 2. Follow-Up Resolution: If no explicit place is mentioned, AND last_active_places is non-empty
+        # 2. Inherit from recalled Hindsight memories if last_active_places is currently empty
+        if not self.last_active_places and recalled_memories:
+            for mem_text in recalled_memories:
+                places_in_mem = detect_mentioned_places(mem_text)
+                known_mem = [p for p in places_in_mem if p in corpus]
+                if known_mem:
+                    self.last_active_places = known_mem
+                    break
+                # Fallback alias search in memory text
+                mem_low = mem_text.lower()
+                matched = False
+                for place_k, aliases in corpus.items():
+                    if any(alias in mem_low for alias in aliases):
+                        self.last_active_places = [place_k]
+                        matched = True
+                        break
+                if matched:
+                    break
+
+        # 3. Follow-Up Resolution: If last_active_places is non-empty
         if self.last_active_places:
             q_lower = raw_query.lower()
 
@@ -895,13 +933,17 @@ class DilliDarshanChatSession:
             has_travel_kw = any(w in q_lower for w in [
                 "timing", "ticket", "fee", "cost", "metro", "reach", "food", "cafe",
                 "photo", "camera", "allowed", "dress", "rule", "open", "close", "time",
-                "nearest", "gate", "distance", "worth", "visit", "architecture", "history", "guide"
+                "nearest", "gate", "distance", "worth", "visit", "architecture", "history", "guide",
+                "eat", "lunch", "dinner", "breakfast", "stairs", "climb", "walk", "wheelchair", "injury"
             ])
 
+            # Prevent follow-up hijacking on explicit city-wide queries (e.g. "in Delhi", "across New Delhi")
+            if not has_pronoun and re.search(r"\b(in|across|around|all over)\s+(new\s+)?delhi\b", q_lower):
+                return raw_query, [], False
+
             if has_pronoun or has_category_kw or has_travel_kw:
-                # Inherit active monument from previous turn
+                # Inherit active monument from previous turn or Hindsight Cloud memory
                 active_key = self.last_active_places[0]
-                corpus = get_known_corpus_places()
                 active_title = active_key.replace("_", " ").title()
                 if active_key in corpus and corpus[active_key]:
                     candidate = corpus[active_key][0].title()
@@ -911,21 +953,58 @@ class DilliDarshanChatSession:
                 resolved_search_query = f"{active_title}: {raw_query}"
                 return resolved_search_query, self.last_active_places, True
 
+        # 4. Open-ended place candidate (if not a follow-up and detected_places has open-ended guess)
+        if detected_places:
+            self.last_active_places = detected_places
+            return raw_query, detected_places, False
+
         return raw_query, [], False
 
-    def send_message(self, raw_query: str, user_context: dict | None = None) -> dict:
+    def send_message(
+        self,
+        raw_query: str,
+        user_id: int | None = None,
+        user_name: str = "Tourist",
+        travel_style: str = "Heritage & History",
+        language: str = "English",
+        user_context: dict | None = None,
+        **kwargs
+    ) -> dict:
         """
-        Processes a single user turn in the multi-turn session:
-        1. Contextual resolution (query rewriting & place inheritance)
-        2. ChromaDB retrieval with active place verification
-        3. TinyFish live web search if needed
-        4. User Profile & Personalization prompt injection (travel_style, language)
-        5. Multi-turn Gemini generation with history context
-        6. Clean source badge extraction and conversational memory logging
+        Processes a single user turn in the multi-turn session using Hindsight Cloud:
+        Step 1: Recall user memories and preferences from Hindsight Cloud.
+        Step 2: Resolve contextual query and place inheritance.
+        Step 3: Retrieve local guidebook chunks from ChromaDB and live web context from TinyFish if needed.
+        Step 4: Construct grounded turn prompt combining ChromaDB, TinyFish, and Hindsight Cloud Agent Memory.
+        Step 5: Generate answer via Gemini with True Local Companion Persona.
+        Step 6: Retain chat turn in Hindsight Cloud asynchronously with zero latency.
         """
-        effective_query, active_places, is_followup = self.resolve_contextual_query(raw_query)
+        # Backward-compatibility unpack if user_context dict is passed
+        if user_context:
+            user_id = user_id or user_context.get("user_id") or user_context.get("id")
+            user_name = user_context.get("user_name") or user_context.get("name") or user_name
+            travel_style = user_context.get("travel_style") or user_context.get("style") or travel_style
+            language = user_context.get("language") or user_context.get("lang") or language
 
-        # Step 2: Retrieve from ChromaDB with active_places passed for verification
+        # Increment multi-turn counter
+        self.turn_count += 1
+
+        # Step 1: Call Hindsight Cloud recall
+        recalled = memory.recall_user_memories(
+            user_id=user_id,
+            query=raw_query,
+            user_name=user_name
+        )
+        recalled_memories = recalled.get("memories", [])
+        formatted_memory_context = recalled.get("formatted_memory_context", "")
+
+        # Step 2: Contextual query resolution (place inheritance via memory if needed)
+        effective_query, active_places, is_followup = self.resolve_contextual_query(
+            raw_query,
+            recalled_memories=recalled_memories
+        )
+
+        # Step 3: Retrieve from ChromaDB with active_places passed for verification
         chunks, status, diagnostics = retrieve_from_chromadb(effective_query, target_places=active_places)
 
         # Format local guidebook chunks
@@ -953,7 +1032,7 @@ class DilliDarshanChatSession:
         web_queries_used = []
         web_sources = []
 
-        # Step 3: Live web research if needed
+        # Step 3 (cont): Live web research if needed
         if status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB"):
             tf_data = tinyfish_live_search_and_fetch(effective_query, max_urls=3)
             if tf_data.get("success") and tf_data.get("markdown_context"):
@@ -961,70 +1040,51 @@ class DilliDarshanChatSession:
                 web_sources = tf_data.get("sources", [])
                 web_queries_used = [tf_data.get("query", effective_query)]
 
-        # Step 4: Build personalization block if user_context is provided
-        personalization_instructions = ""
-        if user_context:
-            user_name = user_context.get("user_name") or user_context.get("name") or "Tourist"
-            travel_style = user_context.get("travel_style") or user_context.get("style") or "Heritage & History"
-            user_lang = user_context.get("language") or user_context.get("lang") or "English"
-
-            style_lower = travel_style.lower()
-            if "food" in style_lower or "market" in style_lower:
-                style_guide = "Focus heavily on culinary heritage, nearby iconic eateries, famous street food (chaat, paranthas, kebabs, kulfi, sweets), and vibrant bazaar trails alongside core monument facts."
-            elif "budget" in style_lower or "metro" in style_lower:
-                style_guide = "Emphasize transit practicality: exact Delhi Metro stations, transit lines, nearest exit gate numbers, walking directions, ticket prices, and economical tips."
-            elif "family" in style_lower or "leisure" in style_lower:
-                style_guide = "Focus on family leisure: ease of walking, park lawns, stroller accessibility, visitor comfort, peaceful resting spots, and family-friendly timings."
-            else:  # Heritage & History
-                style_guide = "Highlight deep architectural styles, builder history, dynasty eras (Mughal, Delhi Sultanate, British), inscriptions, and historical significance."
-
-            if "hindi" in user_lang.lower():
-                lang_guide = "CRITICAL: The visitor prefers Hindi. You MUST respond in clear, natural, and polite Hindi (Devanagari script), using bilingual terms where helpful (e.g. लाल किला / Lal Qila, गेट 4 / Gate 4, येलो लाइन / Yellow Line). Keep all factual timings, ticket prices, and metro facts 100% accurate to the retrieved context."
-            else:
-                lang_guide = "Respond in natural, engaging, and professional English."
-
-            personalization_instructions = f"""
-User Profile & Personalization:
-- Visitor Name: {user_name}
-- Preferred Travel Style: {travel_style} ({style_guide})
-- Preferred Language: {user_lang} ({lang_guide})
-- Tone & Directness Directive: Zero greetings. Strictly do NOT start with "Hello", "Hi", "{user_name}", or any pleasantry. Jump straight into the practical recommendations tailored to {user_name}'s {travel_style} travel style."""
-
-        # Step 5: Build grounded prompt for the current turn
+        # Step 4: Construct Grounded Turn Prompt combining:
+        # - Verified Local Guidebook Context
+        # - Verified Live Web Research Context (TinyFish)
+        # - Hindsight Cloud Agent Memory (User Login Profile, Learned Preferences & Past Context)
+        # - User Question
         place_label = ", ".join(p.replace("_", " ").title() for p in active_places) if active_places else "General Delhi"
-        if tf_data and tf_data.get("markdown_context"):
-            grounded_turn_prompt = f"""Verified Local Guidebook Context:
-{local_context}
 
-Verified Live Web Research Context (via TinyFish Live Web Engine):
-{tf_data['markdown_context']}
-
-User Question: {raw_query}
-Active Target Landmark: {place_label}
-Retrieval Mode: {status}
-{personalization_instructions}
-
-Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session. Bypass any greeting or conversational pleasantry—start immediately and directly with the factual answer:"""
+        memory_block_parts = [
+            f"- User Profile: Name: {user_name} | Travel Style: {travel_style} | Preferred Language: {language}"
+        ]
+        if formatted_memory_context:
+            memory_block_parts.append(formatted_memory_context)
         else:
-            grounded_turn_prompt = f"""Verified Local Guidebook Context:
-{local_context}
+            memory_block_parts.append("- No previous interaction memories recorded yet.")
 
-User Question: {raw_query}
-Active Target Landmark: {place_label}
-Retrieval Mode: {status}
-{personalization_instructions}
-
-Provide an accurate, secular, professional, and practical guide response. Maintain full conversational continuity with our ongoing chat session. Bypass any greeting or conversational pleasantry—start immediately and directly with the factual answer:"""
-
-        # Build multi-turn contents list for Gemini
-        recent_history = self.history[-self.max_history_turns * 2:]
-        contents_list = list(recent_history)
-        contents_list.append(
-            types.Content(role="user", parts=[types.Part.from_text(text=grounded_turn_prompt)])
+        memory_prompt_block = (
+            "Hindsight Cloud Agent Memory (User Login Profile, Learned Preferences & Past Context):\n"
+            + "\n".join(memory_block_parts) + "\n\n"
+            "CRITICAL INSTRUCTION FOR MEMORY INTEGRATION:\n"
+            "Strictly respect and weave all user constraints, accessibility needs (e.g. knee injuries, stairs avoidance, elevator/ramps), "
+            "dietary restrictions (e.g. strict vegetarian spots, avoidance of non-veg), budget, and travel preferences into your answer! "
+            "Never recommend activities, stairs, or dining that contradict the tourist's profile or remembered preferences."
         )
 
+        prompt_elements = [
+            f"Verified Local Guidebook Context:\n{local_context}"
+        ]
+        if tf_data and tf_data.get("markdown_context"):
+            prompt_elements.append(
+                f"Verified Live Web Research Context (via TinyFish Live Web Engine):\n{tf_data['markdown_context']}"
+            )
+
+        prompt_elements.extend([
+            memory_prompt_block,
+            f"User Question: {raw_query}",
+            f"Active Target Landmark: {place_label}",
+            f"Retrieval Mode: {status}",
+            "Provide an accurate, secular, culturally grounded, insider guide response. Weave verified operational facts (metro gates, ticket fees, timings) with practical local intuition. Strictly obey the zero-greeting directive—begin immediately with the substantive answer:"
+        ])
+
+        grounded_turn_prompt = "\n\n".join(prompt_elements)
+
+        # Step 5: Generate answer via Gemini
         enable_search = (status in ("WEB_FALLBACK", "HYBRID_SUPPLEMENT", "EMPTY_DB")) and not (tf_data and tf_data.get("markdown_context"))
-        response, model_used = execute_gemini_generation(contents=contents_list, enable_search=enable_search)
+        response, model_used = execute_gemini_generation(contents=grounded_turn_prompt, enable_search=enable_search)
         answer_text = response.text or ""
 
         # Extract Google Search Grounding metadata if fallback was triggered
@@ -1041,7 +1101,7 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
                             "uri": gc.web.uri or ""
                         })
 
-        # Determine concise source badge string for the frontend pill
+        # Determine concise source badge string for frontend pill
         if status == "LOCAL_HIT" and chunks:
             monuments = []
             for c in chunks:
@@ -1050,20 +1110,20 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
                     monuments.append(m)
             if monuments:
                 clean_names = " & ".join(monuments[:2])
-                source_badge_text = f"{clean_names} Archives (ChromaDB)"
+                source_badge_text = f"{clean_names} Archives (ChromaDB) + Hindsight Cloud Memory"
             else:
-                source_badge_text = "Delhi Tourism & Heritage Archives (ChromaDB)"
+                source_badge_text = "Delhi Tourism Archives (ChromaDB) + Hindsight Cloud Memory"
         elif status == "HYBRID_SUPPLEMENT":
-            source_badge_text = "ChromaDB Archives + TinyFish Live Web"
+            source_badge_text = "ChromaDB + TinyFish Live Web + Hindsight Cloud Memory"
         elif status in ("WEB_FALLBACK", "EMPTY_DB"):
             if "TinyFish" in live_engine:
-                source_badge_text = "TinyFish Live Web + Delhi Tourism"
+                source_badge_text = "TinyFish Live Web + Hindsight Cloud Memory"
             else:
-                source_badge_text = "Gemini Live Web + Delhi Tourism"
+                source_badge_text = "Gemini Live Web + Hindsight Cloud Memory"
         else:
-            source_badge_text = "Delhi Tourism Digital Desk"
+            source_badge_text = "Delhi Tourism Guide + Hindsight Cloud Memory"
 
-        # Clean any raw [Sources & Grounding] footer from the main answer body for the chat bubble
+        # Clean any raw [Sources & Grounding] footer from the main answer body
         clean_answer = re.sub(
             r"\n*(?:\[Sources\s*&\s*Grounding\]|###?\s*Sources(?:\s*&\s*Grounding)?|---+\s*\n\s*\*\*Sources?\*\*:?).*$",
             "",
@@ -1073,26 +1133,17 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
         if not clean_answer:
             clean_answer = answer_text
 
-        # Defensive safety net: guarantee leading greetings are removed from response & history
-        clean_answer = strip_leading_greetings(clean_answer, user_name if "user_name" in locals() else None)
+        # Defensive safety net: guarantee leading greetings are removed
+        clean_answer = strip_leading_greetings(clean_answer, user_name)
 
-        # Append clean exchange to session history
-        self.history.append(types.Content(role="user", parts=[types.Part.from_text(text=raw_query)]))
-        self.history.append(types.Content(role="model", parts=[types.Part.from_text(text=clean_answer)]))
-
-        turn_index = len(self.turn_logs) + 1
-        turn_summary = {
-            "turn": turn_index,
-            "user_query": raw_query,
-            "resolved_query": effective_query,
-            "place": active_places,
-            "status": status,
-            "answer": clean_answer,
-            "source": source_badge_text,
-            "is_followup": is_followup,
-            "model_used": model_used
-        }
-        self.turn_logs.append(turn_summary)
+        # Step 6: Retain chat turn in Hindsight Cloud asynchronously
+        memory.retain_chat_turn(
+            user_id=user_id,
+            user_name=user_name,
+            user_query=raw_query,
+            bot_answer=clean_answer,
+            active_places=active_places
+        )
 
         return {
             "answer": clean_answer,
@@ -1110,7 +1161,10 @@ Provide an accurate, secular, professional, and practical guide response. Mainta
             "effective_query": effective_query,
             "is_followup": is_followup,
             "active_places": active_places,
-            "turn_number": turn_index
+            "turn_number": self.turn_count,
+            "hindsight_bank_id": recalled.get("bank_id"),
+            "memories_recalled": recalled_memories,
+            "memories_recalled_count": len(recalled_memories)
         }
 
 
@@ -1260,9 +1314,9 @@ def display_diagnostic_panel(
     web_queries = result.get("web_queries", [])
 
     # Multi-turn session context diagnostics
-    turn_num = result.get("turn_number") or (len(chat_session.turn_logs) if chat_session else 1)
+    turn_num = result.get("turn_number") or (getattr(chat_session, "turn_count", 1) if chat_session else 1)
     active_places = result.get("active_places") or (chat_session.last_active_places if chat_session else diagnostics.get("mentioned_places", []))
-    history_count = len(chat_session.history) // 2 if chat_session else 0
+    memories_recalled_count = result.get("memories_recalled_count", 0)
     is_followup = result.get("is_followup", False)
     effective_query = result.get("effective_query", query)
 
@@ -1272,7 +1326,7 @@ def display_diagnostic_panel(
     console.print("=" * 80, style="cyan")
 
     console.print(f"• [bold]User Query:[/bold] {query}")
-    console.print(f"• [bold]Session Turn & Memory:[/bold] Turn #{turn_num} | Active Context Place: {active_places} | History: {history_count} prior exchanges")
+    console.print(f"• [bold]Session Turn & Memory:[/bold] Turn #{turn_num} | Active Context Place: {active_places} | Hindsight Memories Recalled: {memories_recalled_count}")
     if is_followup:
         console.print(f"• [bold]Resolved Search Query:[/bold] [bold yellow]\"{effective_query}\"[/bold yellow] [dim](Inherited from chat context)[/dim]")
     console.print(f"• [bold]Query Categories Detected:[/bold] {cats_display}")
@@ -1331,29 +1385,12 @@ def display_diagnostic_panel(
 
 
 def show_session_history(chat_session: DilliDarshanChatSession):
-    """Displays a clean Rich table of all turns in the current chat window."""
-    if not chat_session.turn_logs:
-        console.print("\n[yellow]No conversation history in the current session yet.[/yellow]\n")
+    """Displays a clean summary of current chat session and active place."""
+    if not chat_session.last_active_places:
+        console.print("\n[yellow]No active monument or landmark in the current session yet.[/yellow]\n")
         return
-
-    table = Table(title="🏛️  Dilli Darshan - Multi-Turn Session History", show_header=True, header_style="bold cyan")
-    table.add_column("Turn #", justify="center", style="cyan", width=8)
-    table.add_column("User Question", style="white", max_width=40)
-    table.add_column("Active Place", style="green", max_width=25)
-    table.add_column("Routing Mode", style="yellow", max_width=20)
-    table.add_column("Follow-up?", justify="center", style="magenta", width=12)
-
-    for entry in chat_session.turn_logs:
-        t_num = str(entry.get("turn", ""))
-        q = entry.get("user_query", "")
-        places = ", ".join(p.replace("_", " ").title() for p in entry.get("place", [])) or "General Delhi"
-        mode = entry.get("status", "")
-        is_fup = "✓ Yes" if entry.get("is_followup") else "No"
-        table.add_row(t_num, q, places, mode, is_fup)
-
-    console.print("\n")
-    console.print(table)
-    console.print()
+    places_str = ", ".join(p.replace("_", " ").title() for p in chat_session.last_active_places)
+    console.print(f"\n[bold cyan]🏛️ Active Delhi Landmark:[/bold cyan] [green]{places_str}[/green]\n")
 
 
 def run_query_pipeline(
